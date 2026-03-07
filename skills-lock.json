@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "skills": {
+    "api-design-principles": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "b242f962d5f78bf8bc147e92f2aa0341459b9f5f2f955e9867a8c41b85f22648"
+    },
+    "error-handling-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "bf0cc90f11c0b249036666117a8b1dd1490cbbc252103e2f7882f64a833a8004"
+    },
+    "go-concurrency-patterns": {
+      "source": "rootcastleco/rei-skills",
+      "sourceType": "github",
+      "computedHash": "2df3d83a85938df4870f51681a4d5bc85e7b3d6b5f96bc13aafdbf344b46a511"
+    },
+    "postgresql-table-design": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "e7562fd37e464bf1ddbf41085ce93179c274c0c6ca9cc5cf6b68b535e80648d4"
+    },
+    "react-typescript-frontend": {
+      "source": "findinfinitelabs/chuuk",
+      "sourceType": "github",
+      "computedHash": "dce3658b4a1b8ccaa325489ec5d89b5f58c30974d274210436643c326c7bffec"
+    },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "72e9ab72627e4fd8ed26a582e82309a98ecdc4f6e1c99418430ac05682c9e91d"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "3ff06f0712886f7c2660d6746856c22d3127bd6568ddde29ddad8b72dbaaa226"
+    }
+  }
+}
