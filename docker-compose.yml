@@ -1,0 +1,30 @@
+services:
+  # 1. Base de Datos Principal
+  postgres:
+    image: postgres:16-alpine
+    container_name: edupay_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: edupay_admin
+      POSTGRES_PASSWORD: K0$uvkrN%vMLbU
+      POSTGRES_DB: edupay
+    ports:
+      # CAMBIO CLAVE: "puerto_de_tu_windows : puerto_del_contenedor"
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+
+  # 2. Cliente Visual de Base de Datos
+  adminer:
+    image: adminer:latest
+    container_name: edupay_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
+    name: edupay_pgdata
