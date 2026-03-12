@@ -10,13 +10,20 @@ import (
 	_ "github.com/lib/pq" // Driver de Postgres
 )
 
-// ConnectDB inicializa la conexión a PostgreSQL
 func ConnectDB() *sqlx.DB {
-	// Obtenemos la URL de conexión de las variables de entorno o usamos la de Docker por defecto
+	// Intentamos obtener la URL completa si existe
 	dsn := os.Getenv("DATABASE_URL")
+
 	if dsn == "" {
-		// Formato: user=... password=... host=... port=... dbname=... sslmode=disable
-		dsn = "user=edupay_admin password=secretpassword123 host=localhost port=5433 dbname=edupay sslmode=disable"
+		// Construimos el DSN desde variables individuales para desarrollo local
+		dsn = fmt.Sprintf("user=%s password=%s host=%s port=%s dbname=%s sslmode=%s",
+			os.Getenv("DB_USER"),
+			os.Getenv("DB_PASSWORD"),
+			os.Getenv("DB_HOST"),
+			os.Getenv("DB_PORT"),
+			os.Getenv("DB_NAME"),
+			os.Getenv("DB_SSLMODE"),
+		)
 	}
 
 	db, err := sqlx.Connect("postgres", dsn)
@@ -24,7 +31,7 @@ func ConnectDB() *sqlx.DB {
 		log.Fatalf("No se pudo conectar a la base de datos: %v", err)
 	}
 
-	// Configuraciones de optimización para el pool de conexiones
+	// Optimizaciones del pool de conexiones
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(25)
 	db.SetConnMaxLifetime(5 * time.Minute)

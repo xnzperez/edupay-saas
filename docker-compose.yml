@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: edupay_admin
-      POSTGRES_PASSWORD: K0$uvkrN%vMLbU
+      POSTGRES_PASSWORD: K0uvkrNvMLbU
       POSTGRES_DB: edupay
     ports:
       # CAMBIO CLAVE: "puerto_de_tu_windows : puerto_del_contenedor"
