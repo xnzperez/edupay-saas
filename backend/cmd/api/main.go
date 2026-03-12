@@ -11,44 +11,49 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/xnzperez/edupay-saas/pkg/database"
+
+	// IMPORTANTE: Agregamos la importación de nuestro dominio de tenant
+	"github.com/xnzperez/edupay-saas/internal/tenant"
 )
 
 func main() {
-	// 1. Cargar variables de entorno
 	if err := godotenv.Load(); err != nil {
-		log.Println("⚠️ INFO: No se encontró archivo .env, usando variables del sistema")
+		log.Println("⚠️ INFO: No se encontró archivo .env")
 	}
 
-	// 2. Inicializar Conexión a DB
 	db := database.ConnectDB()
-	defer db.Close() // Cerrar la conexión cuando la app se apague de forma segura
+	defer db.Close()
 
-	// 3. Inicializar Fiber
-	app := fiber.New(fiber.Config{
-		AppName: "EduPay API v1.0",
-	})
+	app := fiber.New(fiber.Config{AppName: "EduPay API v1.0"})
 
-	// 4. Middlewares globales
 	app.Use(recover.New())
 	app.Use(logger.New())
 	app.Use(cors.New())
 
-	// 5. Endpoint de Health Check
+	// 5. RUTAS PÚBLICAS (Sin Middleware)
 	app.Get("/health", func(c *fiber.Ctx) error {
 		err := db.Ping()
 		dbStatus := "connected"
 		if err != nil {
 			dbStatus = "disconnected"
 		}
+		return c.Status(200).JSON(fiber.Map{"status": "success", "database": dbStatus})
+	})
 
-		return c.Status(fiber.StatusOK).JSON(fiber.Map{
-			"status":   "success",
-			"database": dbStatus,
-			"version":  "1.0.0",
+	// 6. RUTAS PROTEGIDAS (Con Middleware Multi-tenant)
+	// Creamos un grupo de rutas. Todo lo que esté bajo "api" pasará por el guardia.
+	api := app.Group("/api", tenant.Middleware())
+
+	// Endpoint de prueba para verificar que el guardia funciona
+	api.Get("/test-tenant", func(c *fiber.Ctx) error {
+		// Recuperamos el tenant_id que el guardia guardó en la memoria
+		id := c.Locals("tenant_id")
+		return c.JSON(fiber.Map{
+			"message":          "Estás en una zona segura multi-tenant",
+			"active_tenant_id": id,
 		})
 	})
 
-	// 6. Configurar puerto y levantar servidor
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"
