@@ -100,6 +100,17 @@ type WalletDashboardResponse struct {
 // ==========================================
 
 // GetWalletDashboardHandler obtiene el saldo y los últimos movimientos del estudiante
+// @Summary Obtener dashboard de la billetera
+// @Description Devuelve el saldo actual y el historial de transacciones del usuario autenticado a través del token JWT.
+// @Tags Billetera
+// @Accept json
+// @Produce json
+// @Param X-Tenant-ID header string true "ID de la Universidad (UUID)"
+// @Security BearerAuth
+// @Success 200 {object} WalletDashboardResponse "Dashboard cargado exitosamente"
+// @Failure 401 {object} map[string]interface{} "Token inválido, expirado o ausente"
+// @Failure 404 {object} map[string]interface{} "Billetera no encontrada"
+// @Router /wallets/me [get]
 func GetWalletDashboardHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 
