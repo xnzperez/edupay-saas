@@ -16,6 +16,7 @@ import (
 	// IMPORTANTE: Agregamos la importación de nuestro dominio de tenant
 	"github.com/xnzperez/edupay-saas/internal/tenant"
 	"github.com/xnzperez/edupay-saas/internal/user"
+	"github.com/xnzperez/edupay-saas/internal/wallet"
 )
 
 func main() {
@@ -87,6 +88,9 @@ func main() {
 	})
 
 	api.Post("/users/register", user.RegisterHandler(db))
+
+	//NUEVA RUTA POST para depositar dinero. Usamos :user_id como parámetro dinámico
+	api.Post("/wallets/:user_id/deposit", wallet.DepositHandler(db))
 
 	port := os.Getenv("PORT")
 	if port == "" {
