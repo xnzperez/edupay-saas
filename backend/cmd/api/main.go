@@ -13,6 +13,7 @@ import (
 
 	"github.com/xnzperez/edupay-saas/pkg/database"
 
+	"github.com/xnzperez/edupay-saas/internal/auth"
 	"github.com/xnzperez/edupay-saas/internal/billing"
 	"github.com/xnzperez/edupay-saas/internal/tenant"
 	"github.com/xnzperez/edupay-saas/internal/user"
@@ -49,7 +50,6 @@ func main() {
 	// 6. RUTAS PROTEGIDAS (Con Middleware Multi-tenant)
 	// Creamos un grupo de rutas. Todo lo que esté bajo "api" pasará por el guardia.
 	api := app.Group("/api", tenant.Middleware())
-
 	// Endpoint de prueba para verificar que el guardia funciona
 	// Endpoint de prueba para verificar que el RLS funciona en Postgres
 	api.Get("/test-tenant", func(c *fiber.Ctx) error {
@@ -87,19 +87,20 @@ func main() {
 		})
 	})
 
+	// --- ZONA PÚBLICA DEL TENANT (No requiere Token) ---
 	api.Post("/users/register", user.RegisterHandler(db))
 	api.Post("/users/login", user.LoginHandler(db))
 
-	//POST para depositar dinero. Usamos :user_id como parámetro dinámico
-	api.Post("/wallets/:user_id/deposit", wallet.DepositHandler(db))
+	// --- BARRERA DE SEGURIDAD JWT ---
+	api.Use(auth.Protected())
 
-	// GET para leer el dashboard
+	// --- ZONA PRIVADA DEL TENANT (Requiere Token) ---
+	// Rutas de Billetera (Wallet)
+	api.Post("/wallets/:user_id/deposit", wallet.DepositHandler(db))
 	api.Get("/wallets/:user_id", wallet.GetWalletDashboardHandler(db))
 
-	// RUTAS DE FACTURACIÓN
-	// 1. Crear una deuda
+	// Rutas de Facturación (Billing)
 	api.Post("/billing/installments", billing.CreateInstallmentHandler(db))
-	// 2. Pagar una deuda (usamos el id de la cuota en la URL)
 	api.Post("/billing/installments/:id/pay", billing.PayInstallmentHandler(db))
 
 	port := os.Getenv("PORT")
