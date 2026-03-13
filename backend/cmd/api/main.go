@@ -15,6 +15,7 @@ import (
 
 	// IMPORTANTE: Agregamos la importación de nuestro dominio de tenant
 	"github.com/xnzperez/edupay-saas/internal/tenant"
+	"github.com/xnzperez/edupay-saas/internal/user"
 )
 
 func main() {
@@ -84,6 +85,8 @@ func main() {
 			"users_found":      c.Locals("user_count"),
 		})
 	})
+
+	api.Post("/users/register", user.RegisterHandler(db))
 
 	port := os.Getenv("PORT")
 	if port == "" {
