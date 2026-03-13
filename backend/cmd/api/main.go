@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 
 	"github.com/xnzperez/edupay-saas/pkg/database"
@@ -45,12 +46,39 @@ func main() {
 	api := app.Group("/api", tenant.Middleware())
 
 	// Endpoint de prueba para verificar que el guardia funciona
+	// Endpoint de prueba para verificar que el RLS funciona en Postgres
 	api.Get("/test-tenant", func(c *fiber.Ctx) error {
-		// Recuperamos el tenant_id que el guardia guardó en la memoria
-		id := c.Locals("tenant_id")
+		// 1. Obtenemos el ID del middleware (como un string)
+		tenantID := c.Locals("tenant_id").(string)
+
+		// 2. Usamos nuestro nuevo wrapper para consultar la base de datos
+		err := database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
+			// Intentamos contar cuántos usuarios tiene ESTE tenant.
+			// Gracias al RLS, Postgres automáticamente filtrará esta consulta,
+			// como si hubiéramos escrito "WHERE tenant_id = 'el-id'".
+			var count int
+			err := tx.Get(&count, "SELECT COUNT(*) FROM users")
+			if err != nil {
+				return err
+			}
+
+			// Guardamos el resultado en el contexto de Fiber para imprimirlo
+			c.Locals("user_count", count)
+			return nil
+		})
+
+		// 3. Manejo de errores de base de datos (ej: si el tenant no es un UUID válido)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error":   "Error de Base de Datos",
+				"details": err.Error(),
+			})
+		}
+
 		return c.JSON(fiber.Map{
-			"message":          "Estás en una zona segura multi-tenant",
-			"active_tenant_id": id,
+			"message":          "Transacción RLS exitosa",
+			"active_tenant_id": tenantID,
+			"users_found":      c.Locals("user_count"),
 		})
 	})
 
