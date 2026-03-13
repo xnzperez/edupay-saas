@@ -88,6 +88,7 @@ func main() {
 	})
 
 	api.Post("/users/register", user.RegisterHandler(db))
+	api.Post("/users/login", user.LoginHandler(db))
 
 	//POST para depositar dinero. Usamos :user_id como parámetro dinámico
 	api.Post("/wallets/:user_id/deposit", wallet.DepositHandler(db))
