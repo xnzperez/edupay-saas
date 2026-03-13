@@ -135,3 +135,53 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 		})
 	}
 }
+
+// ==========================================
+// CONTROLADOR DE LECTURA (GET)
+// ==========================================
+
+// InstallmentDTO define cómo el frontend verá cada deuda
+type InstallmentDTO struct {
+	ID          string  `json:"id" db:"id"`
+	Description string  `json:"description" db:"description"`
+	Amount      float64 `json:"amount" db:"amount"`
+	Status      string  `json:"status" db:"status"`     // PENDING, PAID, OVERDUE
+	DueDate     string  `json:"due_date" db:"due_date"` // Fecha límite
+	CreatedAt   string  `json:"created_at" db:"created_at"`
+}
+
+// GetMyInstallmentsHandler devuelve la lista de cuotas del estudiante autenticado
+func GetMyInstallmentsHandler(db *sqlx.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Obtenemos el ID de forma segura desde el JWT, previniendo IDOR
+		userID := c.Locals("user_id").(string)
+		tenantID := c.Locals("tenant_id").(string)
+
+		var installments []InstallmentDTO
+
+		err := database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
+			// Consultamos las cuotas ordenadas por fecha de vencimiento (las más urgentes primero)
+			query := `
+				SELECT id, description, amount, status, due_date, created_at 
+				FROM installments 
+				WHERE user_id = $1 
+				ORDER BY due_date ASC`
+
+			// Inicializamos el slice para devolver [] en lugar de null si no hay deudas
+			installments = []InstallmentDTO{}
+
+			return tx.Select(&installments, query, userID)
+		})
+
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error":   "No se pudieron cargar las cuotas",
+				"details": err.Error(),
+			})
+		}
+
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"installments": installments,
+		})
+	}
+}
