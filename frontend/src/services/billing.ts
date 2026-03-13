@@ -8,3 +8,13 @@ export const getMyInstallments = async (): Promise<InstallmentsResponse> => {
   );
   return response.data;
 };
+
+// Función que envia el ID de la cuota a la ruta protegida de Go
+export const payInstallment = async (
+  installmentId: string,
+): Promise<{ message: string }> => {
+  const response = await api.post<{ message: string }>(
+    `/billing/installments/${installmentId}/pay`,
+  );
+  return response.data;
+};

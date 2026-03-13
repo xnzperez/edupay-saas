@@ -1,50 +1,67 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { sileo } from "sileo";
 import { getWalletDashboard } from "../services/wallet";
-import { getMyInstallments } from "../services/billing";
+import { getMyInstallments, payInstallment } from "../services/billing"; // Importamos la nueva función
 import type { WalletDashboardResponse } from "../types/wallet";
 import type { Installment } from "../types/billing";
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
-  // Estados para Billetera y Facturación
   const [dashboardData, setDashboardData] =
     useState<WalletDashboardResponse | null>(null);
   const [installments, setInstallments] = useState<Installment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPaying, setIsPaying] = useState(false); // Estado para evitar doble clic al pagar
+
+  // Usamos useCallback para poder llamar esta función desde el useEffect y desde el botón de pago
+  const fetchAllData = useCallback(async () => {
+    try {
+      const [walletData, billingData] = await Promise.all([
+        getWalletDashboard(),
+        getMyInstallments(),
+      ]);
+
+      setDashboardData(walletData);
+      setInstallments(billingData.installments || []);
+    } catch (error: any) {
+      sileo.error(error.response?.data?.error || "Error al cargar los datos");
+      if (error.response?.status === 401) {
+        handleLogout();
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [navigate]);
 
   useEffect(() => {
-    const fetchAllData = async () => {
-      try {
-        // Promise.all ejecuta ambas peticiones HTTP al mismo tiempo, reduciendo el tiempo de carga a la mitad
-        const [walletData, billingData] = await Promise.all([
-          getWalletDashboard(),
-          getMyInstallments(),
-        ]);
-
-        setDashboardData(walletData);
-        setInstallments(billingData.installments || []); // Prevenimos errores si viene null
-      } catch (error: any) {
-        sileo.error(
-          error.response?.data?.error ||
-            "Error al cargar los datos del servidor",
-        );
-        if (error.response?.status === 401) {
-          handleLogout();
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchAllData();
-  }, []);
+  }, [fetchAllData]);
 
   const handleLogout = () => {
     localStorage.removeItem("jwt_token");
     navigate("/login");
+  };
+
+  // ¡NUEVA FUNCIÓN DE PAGO!
+  const handlePay = async (installmentId: string) => {
+    if (isPaying) return; // Previene que el usuario haga múltiples clics
+    setIsPaying(true);
+
+    try {
+      // 1. Enviamos la orden de pago a Go
+      const data = await payInstallment(installmentId);
+      sileo.success(data.message || "Cuota pagada exitosamente");
+
+      // 2. Si fue exitoso, recargamos los datos para actualizar el saldo y cambiar el estado a PAGADO
+      await fetchAllData();
+    } catch (error: any) {
+      // Si no hay saldo suficiente, Go nos enviará el error y Sileo lo mostrará en rojo
+      sileo.error(error.response?.data?.error || "No se pudo procesar el pago");
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -55,7 +72,6 @@ export default function Dashboard() {
     }).format(amount);
   };
 
-  // Función auxiliar para renderizar una etiqueta (badge) con el color correcto según el estado
   const renderStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -84,7 +100,6 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-nord-0 p-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Cabecera */}
         <div className="flex justify-between items-center bg-nord-1 p-6 rounded-xl shadow-lg border border-nord-2">
           <h1 className="text-3xl font-bold text-nord-8">Panel Estudiantil</h1>
           <button
@@ -101,9 +116,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Columna Izquierda: Saldo y Movimientos (Ocupa 2/3 del espacio en pantallas grandes) */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Tarjeta de Saldo */}
               <div className="bg-nord-1 p-8 rounded-xl shadow-lg border border-nord-2 text-center">
                 <p className="text-nord-4 text-lg mb-2">Saldo Disponible</p>
                 <h2 className="text-5xl font-bold text-nord-14">
@@ -113,7 +126,6 @@ export default function Dashboard() {
                 </h2>
               </div>
 
-              {/* Historial de Movimientos */}
               <div className="bg-nord-1 p-6 rounded-xl shadow-lg border border-nord-2">
                 <h3 className="text-xl font-bold text-nord-8 mb-4">
                   Últimos Movimientos
@@ -150,7 +162,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Columna Derecha: Deudas Pendientes (Ocupa 1/3 del espacio) */}
             <div className="lg:col-span-1 bg-nord-1 p-6 rounded-xl shadow-lg border border-nord-2 self-start">
               <h3 className="text-xl font-bold text-nord-13 mb-4">
                 Estado de Cuenta
@@ -181,10 +192,14 @@ export default function Dashboard() {
                         </span>
                       </div>
 
-                      {/* Botón de pago condicional: Solo aparece si está PENDIENTE o VENCIDO */}
+                      {/* ¡BOTÓN CONECTADO! Ejecuta handlePay pasándole el ID de la cuota */}
                       {inst.status !== "PAID" && (
-                        <button className="mt-3 w-full bg-nord-8 hover:bg-nord-10 text-nord-0 text-sm font-bold py-2 rounded transition-colors">
-                          Pagar Cuota
+                        <button
+                          onClick={() => handlePay(inst.id)}
+                          disabled={isPaying}
+                          className="mt-3 w-full bg-nord-8 hover:bg-nord-10 text-nord-0 text-sm font-bold py-2 rounded transition-colors disabled:opacity-50"
+                        >
+                          {isPaying ? "Procesando..." : "Pagar Cuota"}
                         </button>
                       )}
                     </div>
