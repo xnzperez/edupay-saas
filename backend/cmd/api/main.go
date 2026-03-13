@@ -97,7 +97,7 @@ func main() {
 	// --- ZONA PRIVADA DEL TENANT (Requiere Token) ---
 	// Rutas de Billetera (Wallet)
 	api.Post("/wallets/:user_id/deposit", wallet.DepositHandler(db))
-	api.Get("/wallets/:user_id", wallet.GetWalletDashboardHandler(db))
+	api.Get("/wallets/me", wallet.GetWalletDashboardHandler(db))
 
 	// Rutas de Facturación (Billing)
 	api.Post("/billing/installments", billing.CreateInstallmentHandler(db))

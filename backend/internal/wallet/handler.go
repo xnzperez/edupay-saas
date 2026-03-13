@@ -102,7 +102,9 @@ type WalletDashboardResponse struct {
 // GetWalletDashboardHandler obtiene el saldo y los últimos movimientos del estudiante
 func GetWalletDashboardHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		userID := c.Params("user_id")
+
+		// Obtenemos el ID directamente del token JWT verificado.
+		userID := c.Locals("user_id").(string)
 		tenantID := c.Locals("tenant_id").(string)
 
 		var response WalletDashboardResponse
