@@ -97,17 +97,17 @@ func main() {
 
 	// 1. RUTAS DE ESTUDIANTE (Cualquier usuario logueado puede acceder a lo suyo)
 	api.Get("/wallets/me", wallet.GetWalletDashboardHandler(db))
+
+	// ¡NUEVA RUTA! Asegúrate de que empiece con "api.Post" y no con "adminAPI"
+	api.Post("/wallets/transfer", wallet.TransferHandler(db))
+
 	api.Get("/billing/installments/me", billing.GetMyInstallmentsHandler(db))
 	api.Post("/billing/installments/:id/pay", billing.PayInstallmentHandler(db))
 
 	// 2. RUTAS DE ADMINISTRADOR (Requieren Token Y el rol 'ADMIN')
-	// Creamos un subgrupo que hereda la ruta "/api" y le agregamos la barrera de rol.
 	adminAPI := api.Group("/", auth.RequireRole("ADMIN"))
-
-	// Estas rutas ahora están doblemente protegidas: JWT + Rol ADMIN
 	adminAPI.Post("/wallets/:user_id/deposit", wallet.DepositHandler(db))
 	adminAPI.Post("/billing/installments", billing.CreateInstallmentHandler(db))
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"

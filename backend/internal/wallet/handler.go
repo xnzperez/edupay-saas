@@ -154,3 +154,116 @@ func GetWalletDashboardHandler(db *sqlx.DB) fiber.Handler {
 		return c.Status(fiber.StatusOK).JSON(response)
 	}
 }
+
+// ==========================================
+// CONTROLADOR DE TRANSFERENCIAS (P2P)
+// ==========================================
+
+// TransferRequest define los datos para enviar dinero a otro estudiante
+type TransferRequest struct {
+	ToEmail string  `json:"to_email"`
+	Amount  float64 `json:"amount"`
+}
+
+// TransferHandler procesa el envío de saldo entre dos usuarios de la misma universidad
+func TransferHandler(db *sqlx.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// El ID del que envía viene asegurado por el JWT
+		senderID := c.Locals("user_id").(string)
+		tenantID := c.Locals("tenant_id").(string)
+
+		var req TransferRequest
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "JSON inválido"})
+		}
+
+		if req.Amount <= 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "El monto debe ser mayor a 0"})
+		}
+
+		// Iniciamos la transacción blindada
+		err := database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
+			// 1. Buscar al destinatario por su email
+			var receiverID string
+			err := tx.Get(&receiverID, `SELECT id FROM users WHERE email = $1`, req.ToEmail)
+			if err != nil {
+				return fmt.Errorf("el destinatario no existe en esta universidad")
+			}
+
+			if senderID == receiverID {
+				return fmt.Errorf("no puedes enviarte dinero a ti mismo")
+			}
+
+			// 2. PREVENCIÓN DE DEADLOCKS: Ordenamos los IDs para bloquear siempre en el mismo orden
+			firstID, secondID := senderID, receiverID
+			if senderID > receiverID {
+				firstID, secondID = receiverID, senderID
+			}
+
+			// Bloqueamos la billetera 1 y 2 en la base de datos (FOR UPDATE)
+			_, err = tx.Exec(`SELECT id FROM wallets WHERE user_id = $1 FOR UPDATE`, firstID)
+			if err != nil {
+				return err
+			}
+
+			_, err = tx.Exec(`SELECT id FROM wallets WHERE user_id = $1 FOR UPDATE`, secondID)
+			if err != nil {
+				return err
+			}
+
+			// 3. Obtener los datos actuales del remitente (y verificar si tiene dinero)
+			var senderWallet struct {
+				ID      string  `db:"id"`
+				Balance float64 `db:"current_balance"`
+			}
+			tx.Get(&senderWallet, `SELECT id, current_balance FROM wallets WHERE user_id = $1`, senderID)
+
+			if senderWallet.Balance < req.Amount {
+				return fmt.Errorf("saldo insuficiente para la transferencia")
+			}
+
+			// 4. Obtener el ID de la billetera del destinatario
+			var receiverWalletID string
+			tx.Get(&receiverWalletID, `SELECT id FROM wallets WHERE user_id = $1`, receiverID)
+
+			// 5. Ejecutar los movimientos de dinero (restar al remitente, sumar al destinatario)
+			_, err = tx.Exec(`UPDATE wallets SET current_balance = current_balance - $1 WHERE id = $2`, req.Amount, senderWallet.ID)
+			if err != nil {
+				return err
+			}
+
+			_, err = tx.Exec(`UPDATE wallets SET current_balance = current_balance + $1 WHERE id = $2`, req.Amount, receiverWalletID)
+			if err != nil {
+				return err
+			}
+
+			// 6. Registrar los comprobantes en el historial
+			txLogQuery := `INSERT INTO wallet_txs (wallet_id, tenant_id, tx_type, amount, reference) VALUES ($1, $2, $3, $4, $5)`
+
+			// Historial de salida (Remitente) - Usamos 'PURCHASE' según tu constraint
+			_, err = tx.Exec(txLogQuery, senderWallet.ID, tenantID, "PURCHASE", req.Amount, "Envío a: "+req.ToEmail)
+			if err != nil {
+				return err
+			}
+
+			// Historial de entrada (Destinatario) - Usamos 'DEPOSIT' según tu constraint
+			_, err = tx.Exec(txLogQuery, receiverWalletID, tenantID, "DEPOSIT", req.Amount, "Recibido de: un compañero")
+
+			return err
+		})
+
+		// Si falló la transacción, devolvemos el error exacto
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error":   "La transferencia fue rechazada",
+				"details": err.Error(),
+			})
+		}
+
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"message": "Transferencia enviada con éxito",
+			"amount":  req.Amount,
+			"to":      req.ToEmail,
+		})
+	}
+}
