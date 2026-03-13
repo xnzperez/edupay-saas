@@ -92,16 +92,20 @@ func main() {
 	api.Post("/users/login", user.LoginHandler(db))
 
 	// --- BARRERA DE SEGURIDAD JWT ---
+	// Todo lo que declaremos de aquí hacia abajo exigirá estar logueado (Token Bearer)
 	api.Use(auth.Protected())
 
-	// --- ZONA PRIVADA DEL TENANT (Requiere Token) ---
-	// Rutas de Billetera (Wallet)
-	api.Post("/wallets/:user_id/deposit", wallet.DepositHandler(db))
+	// 1. RUTAS DE ESTUDIANTE (Cualquier usuario logueado puede acceder a lo suyo)
 	api.Get("/wallets/me", wallet.GetWalletDashboardHandler(db))
-
-	// Rutas de Facturación (Billing)
-	api.Post("/billing/installments", billing.CreateInstallmentHandler(db))
 	api.Post("/billing/installments/:id/pay", billing.PayInstallmentHandler(db))
+
+	// 2. RUTAS DE ADMINISTRADOR (Requieren Token Y el rol 'ADMIN')
+	// Creamos un subgrupo que hereda la ruta "/api" y le agregamos la barrera de rol.
+	adminAPI := api.Group("/", auth.RequireRole("ADMIN"))
+
+	// Estas rutas ahora están doblemente protegidas: JWT + Rol ADMIN
+	adminAPI.Post("/wallets/:user_id/deposit", wallet.DepositHandler(db))
+	adminAPI.Post("/billing/installments", billing.CreateInstallmentHandler(db))
 
 	port := os.Getenv("PORT")
 	if port == "" {
