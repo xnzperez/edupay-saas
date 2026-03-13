@@ -1,0 +1,186 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Motor financiero multi-tenant para universidades con control de roles y prevención de IDOR.",
+        "title": "EduPay SaaS API",
+        "contact": {
+            "name": "Carlos Pérez",
+            "url": "https://xnzperez-portfolio.vercel.app/"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:3000",
+    "basePath": "/api",
+    "paths": {
+        "/users/login": {
+            "post": {
+                "description": "Autentica a un usuario validando sus credenciales y devuelve un token JWT.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Iniciar sesión en el sistema",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de la Universidad (UUID)",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Credenciales del usuario (Email y Contraseña)",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login exitoso con token",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "JSON inválido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Credenciales incorrectas",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/wallets/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Devuelve el saldo actual y el historial de transacciones del usuario autenticado a través del token JWT.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Billetera"
+                ],
+                "summary": "Obtener dashboard de la billetera",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de la Universidad (UUID)",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Dashboard cargado exitosamente",
+                        "schema": {
+                            "$ref": "#/definitions/wallet.WalletDashboardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Token inválido, expirado o ausente",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Billetera no encontrada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "user.LoginRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "wallet.TransactionDTO": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "reference": {
+                    "type": "string"
+                },
+                "tx_type": {
+                    "description": "DEPOSIT, PURCHASE, FEE",
+                    "type": "string"
+                }
+            }
+        },
+        "wallet.WalletDashboardResponse": {
+            "type": "object",
+            "properties": {
+                "current_balance": {
+                    "type": "number"
+                },
+                "transactions": {
+                    "description": "Un arreglo con el historial",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/wallet.TransactionDTO"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "wallet_id": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Escribe 'Bearer ' seguido de tu token JWT.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

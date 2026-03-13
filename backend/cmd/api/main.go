@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/swagger"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 
@@ -18,7 +19,21 @@ import (
 	"github.com/xnzperez/edupay-saas/internal/tenant"
 	"github.com/xnzperez/edupay-saas/internal/user"
 	"github.com/xnzperez/edupay-saas/internal/wallet"
+
+	_ "github.com/xnzperez/edupay-saas/docs"
 )
+
+// @title EduPay SaaS API
+// @version 1.0
+// @description Motor financiero multi-tenant para universidades con control de roles y prevención de IDOR.
+// @contact.name Carlos Pérez
+// @contact.url https://xnzperez-portfolio.vercel.app/
+// @host localhost:3000
+// @BasePath /api
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Escribe 'Bearer ' seguido de tu token JWT.
 
 func main() {
 	if err := godotenv.Load(); err != nil {
@@ -35,6 +50,9 @@ func main() {
 	app.Use(cors.New())
 
 	// 5. RUTAS DE ADMINISTRACIÓN Y PÚBLICAS (Sin Middleware)
+	// Documentación Swagger
+	app.Get("/swagger/*", swagger.HandlerDefault)
+
 	app.Get("/health", func(c *fiber.Ctx) error {
 		err := db.Ping()
 		dbStatus := "connected"

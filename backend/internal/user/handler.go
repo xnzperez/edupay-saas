@@ -86,6 +86,18 @@ type LoginRequest struct {
 }
 
 // LoginHandler verifica credenciales y emite un JWT
+// LoginHandler verifica credenciales y emite un JWT.
+// @Summary Iniciar sesión en el sistema
+// @Description Autentica a un usuario validando sus credenciales y devuelve un token JWT.
+// @Tags Autenticación
+// @Accept json
+// @Produce json
+// @Param X-Tenant-ID header string true "ID de la Universidad (UUID)"
+// @Param credentials body LoginRequest true "Credenciales del usuario (Email y Contraseña)"
+// @Success 200 {object} map[string]interface{} "Login exitoso con token"
+// @Failure 400 {object} map[string]interface{} "JSON inválido"
+// @Failure 401 {object} map[string]interface{} "Credenciales incorrectas"
+// @Router /users/login [post]
 func LoginHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req LoginRequest

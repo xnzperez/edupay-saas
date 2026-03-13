@@ -1,0 +1,127 @@
+basePath: /api
+definitions:
+  user.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  wallet.TransactionDTO:
+    properties:
+      amount:
+        type: number
+      created_at:
+        type: string
+      id:
+        type: string
+      reference:
+        type: string
+      tx_type:
+        description: DEPOSIT, PURCHASE, FEE
+        type: string
+    type: object
+  wallet.WalletDashboardResponse:
+    properties:
+      current_balance:
+        type: number
+      transactions:
+        description: Un arreglo con el historial
+        items:
+          $ref: '#/definitions/wallet.TransactionDTO'
+        type: array
+      updated_at:
+        type: string
+      wallet_id:
+        type: string
+    type: object
+host: localhost:3000
+info:
+  contact:
+    name: Carlos Pérez
+    url: https://xnzperez-portfolio.vercel.app/
+  description: Motor financiero multi-tenant para universidades con control de roles
+    y prevención de IDOR.
+  title: EduPay SaaS API
+  version: "1.0"
+paths:
+  /users/login:
+    post:
+      consumes:
+      - application/json
+      description: Autentica a un usuario validando sus credenciales y devuelve un
+        token JWT.
+      parameters:
+      - description: ID de la Universidad (UUID)
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Credenciales del usuario (Email y Contraseña)
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/user.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login exitoso con token
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: JSON inválido
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Credenciales incorrectas
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Iniciar sesión en el sistema
+      tags:
+      - Autenticación
+  /wallets/me:
+    get:
+      consumes:
+      - application/json
+      description: Devuelve el saldo actual y el historial de transacciones del usuario
+        autenticado a través del token JWT.
+      parameters:
+      - description: ID de la Universidad (UUID)
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Dashboard cargado exitosamente
+          schema:
+            $ref: '#/definitions/wallet.WalletDashboardResponse'
+        "401":
+          description: Token inválido, expirado o ausente
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Billetera no encontrada
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Obtener dashboard de la billetera
+      tags:
+      - Billetera
+securityDefinitions:
+  BearerAuth:
+    description: Escribe 'Bearer ' seguido de tu token JWT.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
