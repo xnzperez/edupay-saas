@@ -31,7 +31,7 @@ func main() {
 	app.Use(logger.New())
 	app.Use(cors.New())
 
-	// 5. RUTAS PÚBLICAS (Sin Middleware)
+	// 5. RUTAS DE ADMINISTRACIÓN Y PÚBLICAS (Sin Middleware)
 	app.Get("/health", func(c *fiber.Ctx) error {
 		err := db.Ping()
 		dbStatus := "connected"
@@ -40,6 +40,9 @@ func main() {
 		}
 		return c.Status(200).JSON(fiber.Map{"status": "success", "database": dbStatus})
 	})
+
+	// NUEVA RUTA: POST para crear Tenants
+	app.Post("/admin/tenants", tenant.CreateTenantHandler(db))
 
 	// 6. RUTAS PROTEGIDAS (Con Middleware Multi-tenant)
 	// Creamos un grupo de rutas. Todo lo que esté bajo "api" pasará por el guardia.
