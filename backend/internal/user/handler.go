@@ -36,13 +36,26 @@ func RegisterHandler(db *sqlx.DB) fiber.Handler {
 
 		// 3. Ejecutar la inserción dentro de la transacción blindada (RLS)
 		err = database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
-			query := `
+			// A) Insertar al Usuario
+			userQuery := `
 				INSERT INTO users (tenant_id, role, email, full_name, password_hash)
 				VALUES ($1, $2, $3, $4, $5)
 				RETURNING id`
 
-			// Si intentamos meter un tenant_id distinto al del entorno RLS, Postgres bloqueará la consulta
-			return tx.QueryRow(query, tenantID, req.Role, req.Email, req.FullName, string(hashedPassword)).Scan(&newUserID)
+			if err := tx.QueryRow(userQuery, tenantID, req.Role, req.Email, req.FullName, string(hashedPassword)).Scan(&newUserID); err != nil {
+				return err // Si falla el usuario, abortamos
+			}
+
+			// B) Crear su Billetera (Wallet) automáticamente con saldo 0.00
+			walletQuery := `
+				INSERT INTO wallets (user_id, tenant_id, current_balance)
+				VALUES ($1, $2, 0.00)`
+
+			if _, err := tx.Exec(walletQuery, newUserID, tenantID); err != nil {
+				return err // Si falla la billetera, el usuario creado arriba se borra (Rollback)
+			}
+
+			return nil // Todo salió perfecto, hacemos Commit de ambos
 		})
 
 		// 4. Manejo de errores (ej: si el email ya existe en esta universidad)
