@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { loginUser } from "../services/auth";
 // Asumiendo la API estándar de Sileo para lanzar notificaciones
 import { sileo } from "sileo";
 
 export default function Login() {
+  const navigate = useNavigate();
+
   // Estados para capturar lo que el usuario escribe en los inputs
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,6 +27,8 @@ export default function Login() {
 
       // 3. Mostramos la alerta de éxito con Sileo
       sileo.success(data.message || "Bienvenido a EduPay");
+      // Redirigimos al usuario a la zona segura
+      navigate("/dashboard");
 
       // TODO: Redirigir al Dashboard (lo haremos en el siguiente paso)
     } catch (error: any) {
