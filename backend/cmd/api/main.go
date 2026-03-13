@@ -97,6 +97,7 @@ func main() {
 
 	// 1. RUTAS DE ESTUDIANTE (Cualquier usuario logueado puede acceder a lo suyo)
 	api.Get("/wallets/me", wallet.GetWalletDashboardHandler(db))
+	api.Get("/billing/installments/me", billing.GetMyInstallmentsHandler(db))
 	api.Post("/billing/installments/:id/pay", billing.PayInstallmentHandler(db))
 
 	// 2. RUTAS DE ADMINISTRADOR (Requieren Token Y el rol 'ADMIN')
