@@ -13,7 +13,7 @@ import (
 
 	"github.com/xnzperez/edupay-saas/pkg/database"
 
-	// IMPORTANTE: Agregamos la importación de nuestro dominio de tenant
+	"github.com/xnzperez/edupay-saas/internal/billing"
 	"github.com/xnzperez/edupay-saas/internal/tenant"
 	"github.com/xnzperez/edupay-saas/internal/user"
 	"github.com/xnzperez/edupay-saas/internal/wallet"
@@ -91,6 +91,12 @@ func main() {
 
 	//NUEVA RUTA POST para depositar dinero. Usamos :user_id como parámetro dinámico
 	api.Post("/wallets/:user_id/deposit", wallet.DepositHandler(db))
+
+	// RUTAS DE FACTURACIÓN
+	// 1. Crear una deuda
+	api.Post("/billing/installments", billing.CreateInstallmentHandler(db))
+	// 2. Pagar una deuda (usamos el id de la cuota en la URL)
+	api.Post("/billing/installments/:id/pay", billing.PayInstallmentHandler(db))
 
 	port := os.Getenv("PORT")
 	if port == "" {
