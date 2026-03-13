@@ -89,8 +89,11 @@ func main() {
 
 	api.Post("/users/register", user.RegisterHandler(db))
 
-	//NUEVA RUTA POST para depositar dinero. Usamos :user_id como parámetro dinámico
+	//POST para depositar dinero. Usamos :user_id como parámetro dinámico
 	api.Post("/wallets/:user_id/deposit", wallet.DepositHandler(db))
+
+	// GET para leer el dashboard
+	api.Get("/wallets/:user_id", wallet.GetWalletDashboardHandler(db))
 
 	// RUTAS DE FACTURACIÓN
 	// 1. Crear una deuda
