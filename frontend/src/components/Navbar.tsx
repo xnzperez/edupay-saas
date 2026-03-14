@@ -1,10 +1,13 @@
 import { NavLink, useNavigate } from "react-router";
+import { useAuthStore } from "../store/authStore";
 
 export default function Navbar() {
   const navigate = useNavigate();
+  // Extraemos solo la función logout de nuestro store
+  const logout = useAuthStore((state) => state.logout);
 
   const handleLogout = () => {
-    localStorage.removeItem("jwt_token");
+    logout(); // Limpiamos el estado global y el localStorage de un solo golpe
     navigate("/login");
   };
 
