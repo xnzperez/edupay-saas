@@ -7,3 +7,10 @@ export const getWalletDashboard =
     const response = await api.get<WalletDashboardResponse>("/wallets/me");
     return response.data;
   };
+
+export const sendTransfer = async (
+  data: TransferRequest,
+): Promise<TransferResponse> => {
+  const response = await api.post<TransferResponse>("/wallets/transfer", data);
+  return response.data;
+};

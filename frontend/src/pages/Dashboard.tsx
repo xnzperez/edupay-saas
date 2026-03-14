@@ -26,7 +26,10 @@ export default function Dashboard() {
       setDashboardData(walletData);
       setInstallments(billingData.installments || []);
     } catch (error: any) {
-      sileo.error(error.response?.data?.error || "Error al cargar los datos");
+      sileo.error({
+        title: "Error de carga",
+        description: error.response?.data?.error || "Error al cargar los datos",
+      });
       if (error.response?.status === 401) {
         handleLogout();
       }
@@ -44,7 +47,7 @@ export default function Dashboard() {
     navigate("/login");
   };
 
-  // ¡NUEVA FUNCIÓN DE PAGO!
+  // FUNCIÓN DE PAGO
   const handlePay = async (installmentId: string) => {
     if (isPaying) return; // Previene que el usuario haga múltiples clics
     setIsPaying(true);
@@ -52,13 +55,19 @@ export default function Dashboard() {
     try {
       // 1. Enviamos la orden de pago a Go
       const data = await payInstallment(installmentId);
-      sileo.success(data.message || "Cuota pagada exitosamente");
+      sileo.success({
+        title: "¡Pago exitoso!",
+        description: data.message || "Cuota pagada exitosamente",
+      });
 
       // 2. Si fue exitoso, recargamos los datos para actualizar el saldo y cambiar el estado a PAGADO
       await fetchAllData();
     } catch (error: any) {
       // Si no hay saldo suficiente, Go nos enviará el error y Sileo lo mostrará en rojo
-      sileo.error(error.response?.data?.error || "No se pudo procesar el pago");
+      sileo.error({
+        title: "Pago rechazado",
+        description: error.response?.data?.error || "No se pudo procesar el pago",
+      });
     } finally {
       setIsPaying(false);
     }
@@ -117,13 +126,22 @@ export default function Dashboard() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-nord-1 p-8 rounded-xl shadow-lg border border-nord-2 text-center">
+              {/* Tarjeta de Saldo */}
+              <div className="bg-nord-1 p-8 rounded-xl shadow-lg border border-nord-2 text-center relative">
                 <p className="text-nord-4 text-lg mb-2">Saldo Disponible</p>
-                <h2 className="text-5xl font-bold text-nord-14">
+                <h2 className="text-5xl font-bold text-nord-14 mb-6">
                   {dashboardData
                     ? formatCurrency(dashboardData.current_balance)
                     : "$0"}
                 </h2>
+
+                {/* BOTÓN PARA NAVEGAR A TRANSFERENCIAS */}
+                <button
+                  onClick={() => navigate("/transfer")}
+                  className="bg-nord-8 hover:bg-nord-10 text-nord-0 font-bold py-2 px-6 rounded-full transition-colors inline-flex items-center gap-2"
+                >
+                  <span>💸</span> Enviar Dinero
+                </button>
               </div>
 
               <div className="bg-nord-1 p-6 rounded-xl shadow-lg border border-nord-2">

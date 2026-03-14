@@ -26,7 +26,10 @@ export default function Login() {
       localStorage.setItem("jwt_token", data.token);
 
       // 3. Mostramos la alerta de éxito con Sileo
-      sileo.success(data.message || "Bienvenido a EduPay");
+      sileo.success({
+        title: "¡Inicio de sesión exitoso!",
+        description: data.message || "Bienvenido a EduPay",
+      });
       // Redirigimos al usuario a la zona segura
       navigate("/dashboard");
 
@@ -35,7 +38,10 @@ export default function Login() {
       // Extraemos el mensaje de error que configuramos en Go, o mostramos uno genérico
       const errorMessage =
         error.response?.data?.error || "Error al conectar con el servidor";
-      sileo.error(errorMessage);
+      sileo.error({
+        title: "Error de inicio de sesión",
+        description: errorMessage,
+      });
     } finally {
       setIsLoading(false);
     }
