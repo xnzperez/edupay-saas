@@ -14,3 +14,16 @@ export interface WalletDashboardResponse {
   updated_at: string;
   transactions: Transaction[]; // Un arreglo de transacciones
 }
+
+// Datos que enviaremos a Go (exactamente como lo pide nuestro TransferRequest en el backend)
+export interface TransferRequest {
+  to_email: string;
+  amount: number;
+}
+
+// Lo que Go nos responde cuando la transferencia es exitosa
+export interface TransferResponse {
+  message: string;
+  amount: number;
+  to: string;
+}
