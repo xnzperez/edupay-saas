@@ -50,19 +50,10 @@ export default function Transfer() {
   };
 
   return (
-    <div className="min-h-screen bg-nord-0 p-8 flex items-center justify-center">
-      <div className="w-full max-w-md bg-nord-1 rounded-xl shadow-lg border border-nord-2 p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-nord-8">Enviar Dinero</h2>
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="text-nord-4 hover:text-nord-6 transition-colors text-sm"
-          >
-            ← Volver
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
+    <div className="w-full max-w-md mx-auto bg-nord-1 rounded-xl shadow-lg border border-nord-2 p-8 mt-8">
+      <h2 className="text-xl font-bold text-nord-8 mb-6">Enviar Dinero</h2>
+      
+      <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-nord-4 text-sm font-medium mb-1">
               Correo del Destinatario
@@ -99,8 +90,7 @@ export default function Transfer() {
           >
             {isSending ? "Procesando..." : "Transferir"}
           </button>
-        </form>
-      </div>
+      </form>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router";
+import { Link } from "react-router";
 import { sileo } from "sileo";
 import { getWalletDashboard } from "../services/wallet";
 import { getMyInstallments, payInstallment } from "../services/billing"; // Importamos la nueva función
@@ -7,8 +7,6 @@ import type { WalletDashboardResponse } from "../types/wallet";
 import type { Installment } from "../types/billing";
 
 export default function Dashboard() {
-  const navigate = useNavigate();
-
   const [dashboardData, setDashboardData] =
     useState<WalletDashboardResponse | null>(null);
   const [installments, setInstallments] = useState<Installment[]>([]);
@@ -31,21 +29,17 @@ export default function Dashboard() {
         description: error.response?.data?.error || "Error al cargar los datos",
       });
       if (error.response?.status === 401) {
-        handleLogout();
+        localStorage.removeItem("jwt_token");
+        window.location.href = "/login";
       }
     } finally {
       setIsLoading(false);
     }
-  }, [navigate]);
+  }, []);
 
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("jwt_token");
-    navigate("/login");
-  };
 
   // FUNCIÓN DE PAGO
   const handlePay = async (installmentId: string) => {
@@ -106,25 +100,16 @@ export default function Dashboard() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-nord-0 p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex justify-between items-center bg-nord-1 p-6 rounded-xl shadow-lg border border-nord-2">
-          <h1 className="text-3xl font-bold text-nord-8">Panel Estudiantil</h1>
-          <button
-            onClick={handleLogout}
-            className="bg-nord-11 hover:bg-opacity-80 text-nord-6 font-bold py-2 px-4 rounded-lg transition-colors"
-          >
-            Cerrar Sesión
-          </button>
-        </div>
+  if (isLoading) {
+    return (
+      <div className="text-center text-nord-4 py-10">
+        Cargando tu información financiera...
+      </div>
+    );
+  }
 
-        {isLoading ? (
-          <div className="text-center text-nord-4 py-10">
-            Cargando tu información financiera...
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               {/* Tarjeta de Saldo */}
               <div className="bg-nord-1 p-8 rounded-xl shadow-lg border border-nord-2 text-center relative">
@@ -136,12 +121,12 @@ export default function Dashboard() {
                 </h2>
 
                 {/* BOTÓN PARA NAVEGAR A TRANSFERENCIAS */}
-                <button
-                  onClick={() => navigate("/transfer")}
+                <Link
+                  to="/transfer"
                   className="bg-nord-8 hover:bg-nord-10 text-nord-0 font-bold py-2 px-6 rounded-full transition-colors inline-flex items-center gap-2"
                 >
                   <span>💸</span> Enviar Dinero
-                </button>
+                </Link>
               </div>
 
               <div className="bg-nord-1 p-6 rounded-xl shadow-lg border border-nord-2">
@@ -225,9 +210,6 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
