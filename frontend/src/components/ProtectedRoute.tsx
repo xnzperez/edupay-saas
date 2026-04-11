@@ -1,13 +1,14 @@
 import { Navigate, Outlet } from "react-router";
-import { useAuthStore } from "../store/authStore"; // Importamos el store
+import { useAuthStore } from "../store/authStore";
 
 export default function ProtectedRoute() {
-  // Ahora React está "suscrito" al token. Si se borra, este componente reaccionará al instante.
   const token = useAuthStore((state) => state.token);
 
+  // Si no hay token en absoluto, devuélvelo al login
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
+  // Si tiene token, déjalo pasar al siguiente filtro
   return <Outlet />;
 }
