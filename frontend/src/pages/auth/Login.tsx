@@ -4,9 +4,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { sileo } from "sileo";
 
-import { loginUser } from "../services/auth";
-import { useAuthStore } from "../store/authStore";
-import { loginSchema, type LoginFormValues } from "../validations/auth";
+// Fíjate en los ../../ (subimos dos niveles: auth -> pages -> src)
+import { loginUser } from "../../services/auth";
+import { useAuthStore } from "../../store/authStore";
+import { loginSchema, type LoginFormValues } from "../../validations/auth";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -23,19 +24,29 @@ export default function Login() {
   });
 
   // Esta función SOLO se ejecutará si Zod aprueba que los datos son válidos
+  // Esta función SOLO se ejecutará si Zod aprueba que los datos son válidos
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
 
     try {
-      // Ahora enviamos data.email y data.password de forma segura
       const response = await loginUser(data);
 
+      // Guardamos el token (esto asume que tu store decodifica el token y guarda el 'user')
       setToken(response.token);
+
       sileo.success({
         title: "¡Acceso concedido!",
         description: response.message,
       });
-      navigate("/dashboard");
+
+      // ¡NUEVO!: Leemos el rol directamente desde el store de Zustand y redirigimos
+      const role = useAuthStore.getState().user?.role;
+
+      if (role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/student");
+      }
     } catch (error: any) {
       sileo.error({
         title: "Error de autenticación",
@@ -92,6 +103,7 @@ export default function Login() {
               }`}
               placeholder="••••••••"
             />
+            {/* Mensaje de error dinámico de Zod */}
             {errors.password && (
               <p className="text-nord-11 text-xs mt-1 font-medium">
                 {errors.password.message}

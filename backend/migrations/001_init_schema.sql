@@ -1,12 +1,9 @@
--- 1. Habilitar extensión para generar UUIDs nativos
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 -- ==========================================
 -- CREACIÓN DE TABLAS
 -- ==========================================
 
 CREATE TABLE tenants (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     domain VARCHAR(100) UNIQUE NOT NULL,
     default_interest_rate NUMERIC(5,4) NOT NULL DEFAULT 0.0000, -- Ej: 0.0250 para 2.5%
@@ -14,7 +11,7 @@ CREATE TABLE tenants (
 );
 
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     role VARCHAR(50) NOT NULL CHECK (role IN ('ADMIN', 'STUDENT')),
     email VARCHAR(255) NOT NULL,
@@ -25,7 +22,7 @@ CREATE TABLE users (
 );
 
 CREATE TABLE wallets (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     current_balance NUMERIC(15,2) NOT NULL DEFAULT 0.00, -- NUNCA usar FLOAT para dinero
@@ -33,7 +30,7 @@ CREATE TABLE wallets (
 );
 
 CREATE TABLE wallet_txs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     wallet_id UUID NOT NULL REFERENCES wallets(id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     tx_type VARCHAR(50) NOT NULL CHECK (tx_type IN ('DEPOSIT', 'PURCHASE', 'FEE')),

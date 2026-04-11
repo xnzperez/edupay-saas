@@ -1,26 +1,46 @@
 import { create } from "zustand";
+import { jwtDecode } from "jwt-decode";
 
-// 1. Definimos la estructura de nuestro estado global
+// Definimos qué trae tu token por dentro
+interface JwtPayload {
+  sub: string; // El ID del usuario
+  role: string; // ADMIN o STUDENT
+  tenant_id: string; // El ID de la UCC
+  exp: number;
+}
+
 interface AuthState {
   token: string | null;
+  user: JwtPayload | null;
   setToken: (token: string) => void;
   logout: () => void;
 }
 
-// 2. Creamos el hook personalizado que usaremos en nuestros componentes
-export const useAuthStore = create<AuthState>((set) => ({
-  // Al inicializar, leemos el localStorage por si el usuario recarga la página web (F5)
-  token: localStorage.getItem("jwt_token"),
+// Función auxiliar para leer el token de inicio si recargas la página
+const getInitialUser = () => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    try {
+      return jwtDecode<JwtPayload>(token);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
 
-  // Acción para iniciar sesión: guarda el token en memoria y en disco
+export const useAuthStore = create<AuthState>((set) => ({
+  token: localStorage.getItem("token"),
+  user: getInitialUser(), // Extrae los datos al instante
+
   setToken: (token: string) => {
-    localStorage.setItem("jwt_token", token);
-    set({ token });
+    localStorage.setItem("token", token);
+    const decodedUser = jwtDecode<JwtPayload>(token); // Abrimos el token
+    set({ token, user: decodedUser }); // Guardamos ambas cosas
   },
 
-  // Acción para cerrar sesión: limpia la memoria y el disco
   logout: () => {
-    localStorage.removeItem("jwt_token");
-    set({ token: null });
+    localStorage.removeItem("token");
+    set({ token: null, user: null });
   },
 }));

@@ -3,7 +3,7 @@
 -- ==========================================
 
 CREATE TABLE installments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     description VARCHAR(255) NOT NULL, -- Ej: "Matrícula Semestre 1", "Cuota 2"

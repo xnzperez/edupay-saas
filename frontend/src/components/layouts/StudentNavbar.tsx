@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router";
-import { useAuthStore } from "../store/authStore";
+import { useAuthStore } from "../../store/authStore";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -22,10 +22,10 @@ export default function Navbar() {
           </h1>
 
           <div className="flex gap-4">
-            {/* NavLink es especial en React Router: sabe cuándo está "activo" según la URL actual.
-                Usamos esto para cambiar el color del texto si el usuario está en esa página. */}
+            {/* El atributo 'end' asegura que solo se marque activo si la ruta es EXACTAMENTE /student */}
             <NavLink
-              to="/dashboard"
+              to="/student"
+              end
               className={({ isActive }) =>
                 `font-medium transition-colors ${isActive ? "text-nord-8" : "text-nord-4 hover:text-nord-6"}`
               }
@@ -33,7 +33,7 @@ export default function Navbar() {
               Dashboard
             </NavLink>
             <NavLink
-              to="/transfer"
+              to="/student/transfer"
               className={({ isActive }) =>
                 `font-medium transition-colors ${isActive ? "text-nord-8" : "text-nord-4 hover:text-nord-6"}`
               }

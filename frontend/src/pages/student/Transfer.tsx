@@ -4,11 +4,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { sileo } from "sileo";
 
-import { sendTransfer } from "../services/wallet";
+import { sendTransfer } from "../../services/wallet";
 import {
   transferSchema,
   type TransferFormValues,
-} from "../validations/transfer";
+} from "../../validations/transfer";
 
 export default function Transfer() {
   const navigate = useNavigate();
