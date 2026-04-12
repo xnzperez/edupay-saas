@@ -14,3 +14,12 @@ export const sendTransfer = async (
   const response = await api.post<TransferResponse>("/wallets/transfer", data);
   return response.data;
 };
+
+export interface DepositRequest {
+  amount: number;
+}
+
+export const depositFunds = async (userId: string, data: DepositRequest) => {
+  const response = await api.post(`/wallets/${userId}/deposit`, data);
+  return response.data;
+};

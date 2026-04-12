@@ -4,7 +4,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { sileo } from "sileo";
 
-// Validación estricta para que el cajero no recargue $0 o letras por error
+// Importamos los servicios reales
+import {
+  searchStudentByEmail,
+  type StudentSearchResponse,
+} from "../../services/user";
+import { depositFunds } from "../../services/wallet";
+
+// Validación estricta para el formulario de dinero
 const depositSchema = z.object({
   amount: z.coerce
     .number({ invalid_type_error: "Ingresa un monto válido" })
@@ -14,19 +21,11 @@ const depositSchema = z.object({
 
 type DepositFormValues = z.infer<typeof depositSchema>;
 
-// Tipo simulado para el estudiante
-interface Student {
-  id: string;
-  name: string;
-  email: string;
-  balance: number;
-  status: "ACTIVE" | "BLOCKED";
-}
-
 export default function Students() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [selectedStudent, setSelectedStudent] =
+    useState<StudentSearchResponse | null>(null);
   const [isDepositing, setIsDepositing] = useState(false);
 
   const {
@@ -38,49 +37,61 @@ export default function Students() {
     resolver: zodResolver(depositSchema),
   });
 
-  // Simulamos la búsqueda en el backend
-  const handleSearch = (e: React.FormEvent) => {
+  // Conexión real: Búsqueda en Go
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
 
     setIsSearching(true);
     setSelectedStudent(null);
 
-    // Simulamos un retraso de red
-    setTimeout(() => {
-      // Mock: Siempre encuentra a Isaac si buscas algo
-      setSelectedStudent({
-        id: "ad060e02-86e0",
-        name: "Isaac Arciria",
-        email: searchQuery,
-        balance: 15500,
-        status: "ACTIVE",
+    try {
+      const student = await searchStudentByEmail(searchQuery);
+      setSelectedStudent(student);
+    } catch (error: any) {
+      sileo.error({
+        title: "Búsqueda fallida",
+        description: error.response?.data?.error || "Estudiante no encontrado.",
       });
+    } finally {
       setIsSearching(false);
-    }, 800);
+    }
   };
 
-  // Simulamos el depósito en el backend
+  // Conexión real: Depósito en Go
   const onDeposit = async (data: DepositFormValues) => {
+    if (!selectedStudent) return;
     setIsDepositing(true);
 
-    setTimeout(() => {
-      // Simulamos que el backend respondió OK y actualizó el saldo
-      if (selectedStudent) {
-        setSelectedStudent({
-          ...selectedStudent,
-          balance: selectedStudent.balance + data.amount,
-        });
-      }
+    try {
+      const response = await depositFunds(selectedStudent.id, {
+        amount: data.amount,
+      });
+
+      // Actualizamos el saldo visualmente si Go responde OK
+      setSelectedStudent({
+        ...selectedStudent,
+        balance: selectedStudent.balance + data.amount,
+      });
 
       sileo.success({
         title: "Transacción Exitosa",
-        description: `Se han depositado $${data.amount.toLocaleString()} COP a la cuenta de ${selectedStudent?.name}.`,
+        description:
+          response.message ||
+          `Se depositaron $${data.amount.toLocaleString()} COP.`,
       });
 
-      reset(); // Limpiamos el formulario de dinero
+      reset();
+    } catch (error: any) {
+      sileo.error({
+        title: "Error en el depósito",
+        description:
+          error.response?.data?.error ||
+          "Hubo un problema al procesar la recarga.",
+      });
+    } finally {
       setIsDepositing(false);
-    }, 1500);
+    }
   };
 
   return (

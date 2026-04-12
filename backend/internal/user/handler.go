@@ -1,7 +1,9 @@
 package user
 
 import (
+	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -159,5 +161,49 @@ func LoginHandler(db *sqlx.DB) fiber.Handler {
 			"message": "Login exitoso",
 			"token":   t,
 		})
+	}
+}
+
+// SearchStudentHandler busca un estudiante por su correo y devuelve sus datos y saldo
+func SearchStudentHandler(db *sqlx.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Limpiamos espacios invisibles por si acaso
+		email := strings.TrimSpace(c.Query("email"))
+		if email == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "El parámetro email es requerido"})
+		}
+
+		tenantID := c.Locals("tenant_id").(string)
+
+		// EL CHISMOSO: Esto saldrá en tu terminal negra de Go
+		fmt.Println("\n--- INICIANDO BÚSQUEDA ---")
+		fmt.Println("Email a buscar  :", email)
+		fmt.Println("Tenant (UCC) ID :", tenantID)
+
+		var result struct {
+			ID      string  `json:"id" db:"id"`
+			Name    string  `json:"name" db:"full_name"`
+			Email   string  `json:"email" db:"email"`
+			Balance float64 `json:"balance" db:"current_balance"`
+			Status  string  `json:"status"`
+		}
+
+		err := database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
+			// Blindaje total: Ignora mayúsculas/minúsculas en correo y rol
+			query := `
+				SELECT u.id, u.full_name, u.email, w.current_balance
+				FROM users u
+				JOIN wallets w ON u.id = w.user_id
+				WHERE LOWER(u.email) = LOWER($1) AND UPPER(u.role) = 'STUDENT'
+			`
+			return tx.Get(&result, query, email)
+		})
+
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Estudiante no encontrado"})
+		}
+
+		result.Status = "ACTIVE"
+		return c.Status(fiber.StatusOK).JSON(result)
 	}
 }

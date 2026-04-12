@@ -113,19 +113,22 @@ func main() {
 	// Todo lo que declaremos de aquí hacia abajo exigirá estar logueado (Token Bearer)
 	api.Use(auth.Protected())
 
-	// 1. RUTAS DE ESTUDIANTE (Cualquier usuario logueado puede acceder a lo suyo)
+	// 1. RUTAS GENERALES / ESTUDIANTES (Cualquier usuario logueado)
 	api.Get("/wallets/me", wallet.GetWalletDashboardHandler(db))
-
-	// ¡NUEVA RUTA! Asegúrate de que empiece con "api.Post" y no con "adminAPI"
 	api.Post("/wallets/transfer", wallet.TransferHandler(db))
-
 	api.Get("/billing/installments/me", billing.GetMyInstallmentsHandler(db))
 	api.Post("/billing/installments/:id/pay", billing.PayInstallmentHandler(db))
 
 	// 2. RUTAS DE ADMINISTRADOR (Requieren Token Y el rol 'ADMIN')
 	adminAPI := api.Group("/", auth.RequireRole("ADMIN"))
+
+	// Solo el cajero puede buscar estudiantes y ver sus saldos
+	adminAPI.Get("/users/search", user.SearchStudentHandler(db))
+	// Solo el cajero puede inyectar dinero
 	adminAPI.Post("/wallets/:user_id/deposit", wallet.DepositHandler(db))
+	// Solo el cajero puede crear deudas
 	adminAPI.Post("/billing/installments", billing.CreateInstallmentHandler(db))
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"
