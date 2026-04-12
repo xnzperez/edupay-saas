@@ -38,6 +38,7 @@ type MPPreferenceBody struct {
 	AutoReturn        string     `json:"auto_return"`
 }
 
+// CreatePreferenceHandler genera el link de pago dinámico
 func CreatePreferenceHandler() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		userID := c.Locals("user_id").(string)
@@ -47,7 +48,13 @@ func CreatePreferenceHandler() fiber.Handler {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "El monto debe ser mínimo $1,000 COP"})
 		}
 
-		// URLs para que Mercado Pago nos devuelva al estudiante al terminar
+		// Cargamos la URL del frontend dinámicamente desde el .env
+		frontendURL := os.Getenv("FRONTEND_URL")
+		if frontendURL == "" {
+			frontendURL = "http://localhost:5173" // Fallback seguro para entorno local
+		}
+
+		// Configuramos la preferencia con las BackURLs dinámicas
 		bodyData := MPPreferenceBody{
 			Items: []MPItem{
 				{
@@ -60,10 +67,11 @@ func CreatePreferenceHandler() fiber.Handler {
 			},
 			ExternalReference: userID,
 			BackURLs: MPBackURLs{
-				Success: "http://localhost:5173/student/dashboard?status=approved",
-				Failure: "http://localhost:5173/student/dashboard?status=rejected",
-				Pending: "http://localhost:5173/student/dashboard?status=pending",
+				Success: fmt.Sprintf("%s/student/dashboard?status=approved", frontendURL),
+				Failure: fmt.Sprintf("%s/student/dashboard?status=rejected", frontendURL),
+				Pending: fmt.Sprintf("%s/student/dashboard?status=pending", frontendURL),
 			},
+			AutoReturn: "approved",
 		}
 
 		jsonBody, err := json.Marshal(bodyData)
@@ -71,7 +79,6 @@ func CreatePreferenceHandler() fiber.Handler {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error armando JSON"})
 		}
 
-		// 🔍 RAYOS X: Vamos a ver exactamente qué está escupiendo Go
 		fmt.Println("\n--- ENVIANDO A MERCADO PAGO ---")
 		fmt.Println(string(jsonBody))
 		fmt.Println("-------------------------------\n")
@@ -115,9 +122,10 @@ type MPPaymentResponse struct {
 	ExternalReference string  `json:"external_reference"`
 }
 
+// WebhookHandler recibe la confirmación de pago de Mercado Pago
 func WebhookHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// 1. Responder rápido (La regla de oro)
+		// 1. Responder rápido (La regla de oro de los webhooks)
 		c.Status(fiber.StatusOK).SendString("OK")
 
 		paymentID := c.Query("data.id")
@@ -132,14 +140,15 @@ func WebhookHandler(db *sqlx.DB) fiber.Handler {
 		var paymentData MPPaymentResponse
 
 		// ==========================================
-		// 🚀 EL CHEAT CODE (MODO DESARROLLO)
+		// 🚀 MODO DESARROLLO (Bypass de Webhook)
 		// ==========================================
-		if paymentID == "9999" {
+		// Validamos estrictamente que la variable APP_ENV sea 'development'
+		if paymentID == "9999" && os.Getenv("APP_ENV") == "development" {
 			fmt.Println("🛠️ [MODO DEV] Simulando pago exitoso sin consultar a MP...")
 			paymentData = MPPaymentResponse{
 				Status:            "approved",
 				TransactionAmount: 50000,
-				ExternalReference: c.Query("user_id"), // Lo pasaremos por Postman
+				ExternalReference: c.Query("user_id"),
 			}
 		} else {
 			// ==========================================
@@ -161,7 +170,7 @@ func WebhookHandler(db *sqlx.DB) fiber.Handler {
 		}
 
 		// ==========================================
-		// 💾 5. LÓGICA DE BASE DE DATOS (EDUPAY)
+		// 💾 5. LÓGICA DE BASE DE DATOS
 		// ==========================================
 		if paymentData.Status == "approved" {
 			userID := paymentData.ExternalReference
@@ -169,8 +178,7 @@ func WebhookHandler(db *sqlx.DB) fiber.Handler {
 
 			fmt.Printf("✅ APROBADO: Sumaremos $%v al usuario %s\n", amount, userID)
 
-			// A. Como el webhook es público, no tenemos el Tenant en el middleware.
-			// Tenemos que preguntarle a la base de datos a qué universidad pertenece este usuario.
+			// A. Recuperar el tenant_id del usuario
 			var tenantID string
 			err := db.Get(&tenantID, "SELECT tenant_id FROM users WHERE id = $1", userID)
 			if err != nil {
@@ -178,15 +186,15 @@ func WebhookHandler(db *sqlx.DB) fiber.Handler {
 				return nil
 			}
 
-			// B. Usamos tu función segura con RLS para inyectar el dinero
+			// B. Ejecución transaccional aislada (RLS)
 			err = database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
-				// 1. Sumar a la billetera
+				// 1. Actualizar saldo
 				_, err := tx.Exec("UPDATE wallets SET current_balance = current_balance + $1, updated_at = NOW() WHERE user_id = $2", amount, userID)
 				if err != nil {
 					return err
 				}
 
-				// 2. Dejar el recibo en transacciones (CORREGIDO: wallet_txs y pasamos el tenant_id)
+				// 2. Registrar movimiento en el ledger
 				_, err = tx.Exec(`
 					INSERT INTO wallet_txs (wallet_id, tenant_id, tx_type, amount, reference) 
 					VALUES ((SELECT id FROM wallets WHERE user_id = $2), $3, 'DEPOSIT', $1, 'Recarga Mercado Pago')
