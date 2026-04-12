@@ -16,6 +16,7 @@ import (
 
 	"github.com/xnzperez/edupay-saas/internal/auth"
 	"github.com/xnzperez/edupay-saas/internal/billing"
+	"github.com/xnzperez/edupay-saas/internal/payment"
 	"github.com/xnzperez/edupay-saas/internal/tenant"
 	"github.com/xnzperez/edupay-saas/internal/user"
 	"github.com/xnzperez/edupay-saas/internal/wallet"
@@ -65,6 +66,10 @@ func main() {
 	// NUEVA RUTA: POST para crear Tenants
 	app.Post("/admin/tenants", tenant.CreateTenantHandler(db))
 
+	// 🚀 NUEVA RUTA: Webhook de Mercado Pago (TOTALMENTE PÚBLICA Y SIN GUARDIA)
+	// Al usar "app." en lugar de "api.", nos saltamos TODOS los middlewares.
+	app.Post("/webhook/mercadopago", payment.WebhookHandler(db))
+
 	// 6. RUTAS PROTEGIDAS (Con Middleware Multi-tenant)
 	// Creamos un grupo de rutas. Todo lo que esté bajo "api" pasará por el guardia.
 	api := app.Group("/api", tenant.Middleware())
@@ -113,21 +118,32 @@ func main() {
 	// Todo lo que declaremos de aquí hacia abajo exigirá estar logueado (Token Bearer)
 	api.Use(auth.Protected())
 
-	// 1. RUTAS GENERALES / ESTUDIANTES (Cualquier usuario logueado)
+	// ==========================================
+	// 1. RUTAS DE ESTUDIANTES (Cualquier logueado)
+	// ==========================================
 	api.Get("/wallets/me", wallet.GetWalletDashboardHandler(db))
 	api.Post("/wallets/transfer", wallet.TransferHandler(db))
+
+	// RUTA DE PAGOS LIBERADA
+	api.Post("/payments/preference", payment.CreatePreferenceHandler())
+
 	api.Get("/billing/installments/me", billing.GetMyInstallmentsHandler(db))
 	api.Post("/billing/installments/:id/pay", billing.PayInstallmentHandler(db))
 
-	// 2. RUTAS DE ADMINISTRADOR (Requieren Token Y el rol 'ADMIN')
-	adminAPI := api.Group("/", auth.RequireRole("ADMIN"))
+	// ==========================================
+	// 2. RUTAS DE ADMINISTRADOR (Cajero)
+	// ==========================================
+	// En lugar de un grupo, le pasamos el middleware 'RequireRole' como segundo parámetro,
+	// justo antes del controlador, como un francotirador.
 
 	// Solo el cajero puede buscar estudiantes y ver sus saldos
-	adminAPI.Get("/users/search", user.SearchStudentHandler(db))
+	api.Get("/users/search", auth.RequireRole("ADMIN"), user.SearchStudentHandler(db))
+
 	// Solo el cajero puede inyectar dinero
-	adminAPI.Post("/wallets/:user_id/deposit", wallet.DepositHandler(db))
+	api.Post("/wallets/:user_id/deposit", auth.RequireRole("ADMIN"), wallet.DepositHandler(db))
+
 	// Solo el cajero puede crear deudas
-	adminAPI.Post("/billing/installments", billing.CreateInstallmentHandler(db))
+	api.Post("/billing/installments", auth.RequireRole("ADMIN"), billing.CreateInstallmentHandler(db))
 
 	port := os.Getenv("PORT")
 	if port == "" {

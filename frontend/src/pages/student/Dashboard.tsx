@@ -5,6 +5,7 @@ import { useAuthStore } from "../../store/authStore";
 // Importamos los servicios reales
 import { getWalletDashboard } from "../../services/wallet";
 import { getMyInstallments, payInstallment } from "../../services/billing";
+import { createPaymentPreference } from "../../services/payment";
 
 // Definimos las estructuras visuales basadas en lo que devuelve Go
 interface Transaction {
@@ -31,6 +32,10 @@ interface Installment {
 }
 
 export default function Dashboard() {
+  // Estados para la recarga de saldo
+  const [topUpAmount, setTopUpAmount] = useState<number | "">("");
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
   const user = useAuthStore((state) => state.user);
 
   const [wallet, setWallet] = useState<WalletData | null>(null);
@@ -50,7 +55,6 @@ export default function Dashboard() {
       setWallet(walletRes);
 
       // Filtramos para mostrar solo las que están pendientes (por si Go devuelve todo el historial)
-      // Ajusta 'debtsRes' según la estructura exacta que devuelve tu Go. Asumimos que devuelve un array directo o un objeto con un array.
       const pendingDebts = (
         Array.isArray(debtsRes)
           ? debtsRes
@@ -106,6 +110,31 @@ export default function Dashboard() {
     }
   };
 
+  // NUEVO: Lógica para recargar saldo vía Mercado Pago
+  const handleTopUp = async () => {
+    if (!topUpAmount || topUpAmount < 1000) {
+      sileo.error({
+        title: "Monto inválido",
+        description: "El monto mínimo de recarga es de $1,000 COP",
+      });
+      return;
+    }
+
+    setIsRedirecting(true);
+    try {
+      const response = await createPaymentPreference(Number(topUpAmount));
+
+      // Magia: Redirigimos al usuario a la página de Mercado Pago
+      window.location.href = response.checkout_url;
+    } catch (error: any) {
+      sileo.error({
+        title: "Error al iniciar pago",
+        description: error.response?.data?.error || "Intenta nuevamente.",
+      });
+      setIsRedirecting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center animate-pulse text-nord-4">
@@ -140,10 +169,43 @@ export default function Dashboard() {
             <h2 className="text-5xl font-black text-nord-8 tracking-tight relative z-10">
               ${wallet?.current_balance.toLocaleString() || "0"}
             </h2>
+
             <div className="mt-6 flex gap-4 relative z-10">
               <button className="bg-nord-8 hover:bg-nord-9 text-nord-0 font-bold py-2 px-6 rounded-xl transition-all shadow-lg shadow-nord-8/20">
                 Transferir a compañero
               </button>
+            </div>
+
+            {/* NUEVA SECCIÓN DE RECARGA */}
+            <div className="mt-8 pt-6 border-t border-nord-2/50 relative z-10">
+              <p className="text-sm font-bold text-nord-4 mb-3">
+                Recarga tu cuenta vía PSE o Tarjeta
+              </p>
+              <div className="flex gap-4">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-nord-4 font-bold">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    value={topUpAmount}
+                    onChange={(e) =>
+                      setTopUpAmount(
+                        e.target.value === "" ? "" : Number(e.target.value),
+                      )
+                    }
+                    placeholder="Ej. 50000"
+                    className="w-full pl-8 pr-4 py-3 bg-nord-0 border border-nord-3 rounded-xl text-nord-6 focus:ring-2 focus:ring-nord-8 focus:outline-none transition-all"
+                  />
+                </div>
+                <button
+                  onClick={handleTopUp}
+                  disabled={isRedirecting || !topUpAmount}
+                  className="bg-nord-8 hover:bg-nord-9 text-nord-0 font-extrabold py-3 px-6 rounded-xl transition-all shadow-lg shadow-nord-8/20 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  {isRedirecting ? "Conectando..." : "Recargar Saldo"}
+                </button>
+              </div>
             </div>
           </div>
 
