@@ -13,6 +13,8 @@ import AdminLayout from "./components/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import StudentsList from "./pages/admin/Students";
 
+import BillingList from "./pages/admin/Billing";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -29,6 +31,7 @@ export default function App() {
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="students" element={<StudentsList />} />
+              <Route path="billing" element={<BillingList />} />
             </Route>
           </Route>
 
