@@ -11,6 +11,7 @@ import Transfer from "./pages/student/Transfer";
 
 import AdminLayout from "./components/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
+import StudentsList from "./pages/admin/Students";
 
 export default function App() {
   return (
@@ -27,7 +28,7 @@ export default function App() {
           <Route element={<RoleRoute allowedRole="ADMIN" />}>
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
-              {/* Más adelante pondremos aquí <Route path="students" element={<StudentsList />} /> */}
+              <Route path="students" element={<StudentsList />} />
             </Route>
           </Route>
 
