@@ -1,6 +1,17 @@
 import { api } from "./api";
 import type { WalletDashboardResponse } from "../types/wallet";
 
+export interface TransferRequest {
+  to_email: string;
+  amount: number;
+}
+
+export interface TransferResponse {
+  message: string;
+  amount: number;
+  to: string;
+}
+
 export const getWalletDashboard =
   async (): Promise<WalletDashboardResponse> => {
     // Solo necesitamos la ruta; Axios pone el Token y el Tenant ID por nosotros

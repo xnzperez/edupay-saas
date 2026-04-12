@@ -16,8 +16,8 @@ const billingSchema = z.object({
   concept: z
     .string()
     .min(4, "El concepto debe ser descriptivo (ej. Matrícula)"),
-  amount: z.coerce
-    .number({ invalid_type_error: "Ingresa un monto válido" })
+  amount: z
+    .number({ message: "Ingresa un monto válido" })
     .min(5000, "El monto mínimo a facturar es de $5,000 COP"),
   due_date: z.string().min(1, "Debes seleccionar una fecha de vencimiento"),
 });
@@ -198,7 +198,7 @@ export default function Billing() {
                         </span>
                         <input
                           type="number"
-                          {...register("amount")}
+                          {...register("amount", { valueAsNumber: true })}
                           placeholder="0.00"
                           className={`w-full pl-8 pr-4 py-3 bg-nord-0 border rounded-xl text-nord-6 placeholder-nord-3 focus:ring-4 focus:outline-none transition-all ${
                             errors.amount

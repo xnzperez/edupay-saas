@@ -13,8 +13,8 @@ import { depositFunds } from "../../services/wallet";
 
 // Validación estricta para el formulario de dinero
 const depositSchema = z.object({
-  amount: z.coerce
-    .number({ invalid_type_error: "Ingresa un monto válido" })
+  amount: z
+    .number({ message: "Ingresa un monto válido" })
     .min(1000, "El monto mínimo es de $1,000 COP")
     .max(5000000, "El límite por transacción es $5,000,000 COP"),
 });
@@ -185,7 +185,7 @@ export default function Students() {
                       </span>
                       <input
                         type="number"
-                        {...register("amount")}
+                        {...register("amount", { valueAsNumber: true })}
                         placeholder="50000"
                         className={`w-full pl-10 pr-4 py-4 bg-nord-0 border rounded-xl text-nord-6 font-bold text-xl placeholder-nord-3 focus:ring-4 focus:outline-none transition-all ${
                           errors.amount

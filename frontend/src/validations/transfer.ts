@@ -9,7 +9,7 @@ export const transferSchema = z.object({
 
   // Validación estricta para el dinero
   amount: z
-    .number({ invalid_type_error: "El monto debe ser un número válido" })
+    .number({ message: "El monto debe ser un número válido" })
     .min(1, "El monto mínimo a transferir es $1 COP")
     .int("El monto no puede tener decimales"),
 });
