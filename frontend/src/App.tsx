@@ -9,6 +9,9 @@ import StudentLayout from "./components/layouts/StudentLayout";
 import Dashboard from "./pages/student/Dashboard";
 import Transfer from "./pages/student/Transfer";
 
+import AdminLayout from "./components/layouts/AdminLayout";
+import AdminDashboard from "./pages/admin/Dashboard";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -22,15 +25,9 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           {/* 2A. Guardia de Cajeros */}
           <Route element={<RoleRoute allowedRole="ADMIN" />}>
-            <Route
-              path="/admin"
-              element={
-                <div className="p-10 text-white font-bold text-2xl">
-                  Layout del Cajero en construcción...
-                </div>
-              }
-            >
-              {/* Aquí irán las rutas del cajero */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              {/* Más adelante pondremos aquí <Route path="students" element={<StudentsList />} /> */}
             </Route>
           </Route>
 
