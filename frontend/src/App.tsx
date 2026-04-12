@@ -24,7 +24,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
 
-        {/* 1. Guardia de Puerta Principal (Asegura que haya sesión) */}
+        {/* 1. Guardia de Puerta Principal */}
         <Route element={<ProtectedRoute />}>
           {/* 2A. Guardia de Cajeros */}
           <Route element={<RoleRoute allowedRole="ADMIN" />}>
