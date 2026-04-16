@@ -1,0 +1,20 @@
+# Entornos y Secretos (¡LO MÁS IMPORTANTE!)
+.env
+.env.*
+*.pem
+*.key
+
+# Binarios y Ejecutables de Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+tmp/
+main
+
+# Archivos del Sistema Operativo y Editores
+.DS_Store
+.vscode/
+.idea/
