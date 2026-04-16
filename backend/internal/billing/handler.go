@@ -9,6 +9,10 @@ import (
 	"github.com/xnzperez/edupay-saas/pkg/database"
 )
 
+// ==========================================
+// ESTRUCTURAS DE DATOS (DTOs)
+// ==========================================
+
 // CreateInstallmentReq define los datos necesarios para asignarle una deuda a un estudiante.
 type CreateInstallmentReq struct {
 	UserID      string  `json:"user_id"`
@@ -16,6 +20,28 @@ type CreateInstallmentReq struct {
 	Amount      float64 `json:"amount"`
 	DueDate     string  `json:"due_date"` // Formato esperado: YYYY-MM-DD
 }
+
+// InstallmentDTO define cómo el frontend verá cada deuda
+type InstallmentDTO struct {
+	ID          string  `json:"id" db:"id"`
+	Description string  `json:"description" db:"description"`
+	Amount      float64 `json:"amount" db:"amount"`
+	Status      string  `json:"status" db:"status"`     // PENDING, PAID, OVERDUE
+	DueDate     string  `json:"due_date" db:"due_date"` // Fecha límite
+	CreatedAt   string  `json:"created_at" db:"created_at"`
+}
+
+// StudentSearchResult define la estructura de los datos que le enviaremos al Cajero.
+type StudentSearchResult struct {
+	ID             string  `json:"id" db:"id"`
+	FullName       string  `json:"full_name" db:"full_name"`
+	Email          string  `json:"email" db:"email"`
+	CurrentBalance float64 `json:"current_balance" db:"current_balance"`
+}
+
+// ==========================================
+// CONTROLADORES DE ESCRITURA (POST / PUT)
+// ==========================================
 
 // CreateInstallmentHandler inserta una nueva cuota en estado 'PENDING'.
 func CreateInstallmentHandler(db *sqlx.DB) fiber.Handler {
@@ -137,39 +163,84 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 }
 
 // ==========================================
-// CONTROLADOR DE LECTURA (GET)
+// CONTROLADORES DE LECTURA (GET)
 // ==========================================
 
-// InstallmentDTO define cómo el frontend verá cada deuda
-type InstallmentDTO struct {
-	ID          string  `json:"id" db:"id"`
-	Description string  `json:"description" db:"description"`
-	Amount      float64 `json:"amount" db:"amount"`
-	Status      string  `json:"status" db:"status"`     // PENDING, PAID, OVERDUE
-	DueDate     string  `json:"due_date" db:"due_date"` // Fecha límite
-	CreatedAt   string  `json:"created_at" db:"created_at"`
+// SearchStudentsHandler permite al cajero buscar estudiantes por nombre o correo
+func SearchStudentsHandler(db *sqlx.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// 1. Validar el término de búsqueda
+		searchQuery := c.Query("q")
+		if searchQuery == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Debes proporcionar un término de búsqueda",
+			})
+		}
+
+		// 2. Extraer el TenantID del middleware para la transacción segura
+		tenantID := c.Locals("tenant_id").(string)
+		searchTerm := "%" + searchQuery + "%" // Comodines para ILIKE (búsqueda parcial)
+
+		// Inicializamos el slice para asegurar que retornamos [] en lugar de null en el JSON
+		students := []StudentSearchResult{}
+
+		// 3. Ejecutar la búsqueda dentro del contexto seguro del Tenant
+		err := database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
+			query := `
+				SELECT u.id, u.full_name, u.email, w.current_balance
+				FROM users u
+				JOIN wallets w ON u.id = w.user_id
+				WHERE u.role = 'STUDENT'
+				AND (u.full_name ILIKE $1 OR u.email ILIKE $1)
+				LIMIT 10
+			`
+			return tx.Select(&students, query, searchTerm)
+		})
+
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error":   "Error interno al buscar en la base de datos",
+				"details": err.Error(),
+			})
+		}
+
+		return c.JSON(students)
+	}
 }
 
 // GetMyInstallmentsHandler devuelve la lista de cuotas del estudiante autenticado
 func GetMyInstallmentsHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Obtenemos el ID de forma segura desde el JWT, previniendo IDOR
-		userID := c.Locals("user_id").(string)
-		tenantID := c.Locals("tenant_id").(string)
+		// 🛡️ PARCHE DE SEGURIDAD: Extraer Locals de forma segura sin causar Panic
+		userIDRaw := c.Locals("user_id")
+		tenantIDRaw := c.Locals("tenant_id")
+
+		if userIDRaw == nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "Acceso denegado: No se encontró el ID del usuario. ¿Falta el middleware de JWT?",
+			})
+		}
+		if tenantIDRaw == nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Acceso denegado: No se encontró el Tenant ID.",
+			})
+		}
+
+		// Ahora es seguro convertir a string
+		userID := userIDRaw.(string)
+		tenantID := tenantIDRaw.(string)
 
 		var installments []InstallmentDTO
 
 		err := database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
-			// Consultamos las cuotas ordenadas por fecha de vencimiento (las más urgentes primero)
+			// Consultamos las cuotas ordenadas por fecha de vencimiento
 			query := `
 				SELECT id, description, amount, status, due_date, created_at 
 				FROM installments 
 				WHERE user_id = $1 
 				ORDER BY due_date ASC`
 
-			// Inicializamos el slice para devolver [] en lugar de null si no hay deudas
 			installments = []InstallmentDTO{}
-
 			return tx.Select(&installments, query, userID)
 		})
 

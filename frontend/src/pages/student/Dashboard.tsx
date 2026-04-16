@@ -25,7 +25,7 @@ interface WalletData {
 
 interface Installment {
   id: string;
-  concept: string;
+  description: string;
   amount: number;
   due_date: string;
   status: "PENDING" | "PAID";
@@ -297,7 +297,7 @@ export default function Dashboard() {
                     Vence: {new Date(debt.due_date).toLocaleDateString()}
                   </p>
                   <h4 className="font-bold text-nord-6 text-lg">
-                    {debt.concept}
+                    {debt.description}
                   </h4>
                   <p className="text-2xl font-black text-nord-11 my-3">
                     ${debt.amount.toLocaleString()}

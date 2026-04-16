@@ -25,10 +25,11 @@ type MPItem struct {
 	CurrencyID  string  `json:"currency_id"`
 }
 
+// Usamos punteros para permitir omitir propiedades vacías y evitar el error 400
 type MPBackURLs struct {
-	Success string `json:"success"`
-	Failure string `json:"failure"`
-	Pending string `json:"pending"`
+	Success *string `json:"success,omitempty"`
+	Failure *string `json:"failure,omitempty"`
+	Pending *string `json:"pending,omitempty"`
 }
 
 type MPPreferenceBody struct {
@@ -54,6 +55,11 @@ func CreatePreferenceHandler() fiber.Handler {
 			frontendURL = "http://localhost:5173" // Fallback seguro para entorno local
 		}
 
+		// Declaramos las URLs en variables antes para poder sacarles el puntero
+		successURL := fmt.Sprintf("%s/student/dashboard?status=approved", frontendURL)
+		failureURL := fmt.Sprintf("%s/student/dashboard?status=rejected", frontendURL)
+		pendingURL := fmt.Sprintf("%s/student/dashboard?status=pending", frontendURL)
+
 		// Configuramos la preferencia con las BackURLs dinámicas
 		bodyData := MPPreferenceBody{
 			Items: []MPItem{
@@ -67,9 +73,9 @@ func CreatePreferenceHandler() fiber.Handler {
 			},
 			ExternalReference: userID,
 			BackURLs: MPBackURLs{
-				Success: fmt.Sprintf("%s/student/dashboard?status=approved", frontendURL),
-				Failure: fmt.Sprintf("%s/student/dashboard?status=rejected", frontendURL),
-				Pending: fmt.Sprintf("%s/student/dashboard?status=pending", frontendURL),
+				Success: &successURL,
+				Failure: &failureURL,
+				Pending: &pendingURL,
 			},
 			AutoReturn: "approved",
 		}
@@ -142,7 +148,6 @@ func WebhookHandler(db *sqlx.DB) fiber.Handler {
 		// ==========================================
 		// 🚀 MODO DESARROLLO (Bypass de Webhook)
 		// ==========================================
-		// Validamos estrictamente que la variable APP_ENV sea 'development'
 		if paymentID == "9999" && os.Getenv("APP_ENV") == "development" {
 			fmt.Println("🛠️ [MODO DEV] Simulando pago exitoso sin consultar a MP...")
 			paymentData = MPPaymentResponse{
