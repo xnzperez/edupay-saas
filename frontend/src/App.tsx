@@ -12,8 +12,10 @@ import Transfer from "./pages/student/Transfer";
 import AdminLayout from "./components/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import StudentsList from "./pages/admin/Students";
-
 import BillingList from "./pages/admin/Billing";
+
+// Importamos la nueva vista de SuperAdmin
+import CreateTenant from "./pages/superadmin/CreateTenant";
 
 export default function App() {
   return (
@@ -24,7 +26,12 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
 
-        {/* 1. Guardia de Puerta Principal */}
+        {/* ========================================== */}
+        {/* RUTA DE SUPERADMIN (Gestor del SaaS) */}
+        {/* ========================================== */}
+        <Route path="/superadmin/tenants/new" element={<CreateTenant />} />
+
+        {/* 1. Guardia de Puerta Principal (Solo logueados) */}
         <Route element={<ProtectedRoute />}>
           {/* 2A. Guardia de Cajeros */}
           <Route element={<RoleRoute allowedRole="ADMIN" />}>
