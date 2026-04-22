@@ -87,6 +87,7 @@ func main() {
 	// 1. RUTAS DE ESTUDIANTES (Cualquier usuario logueado)
 	// ==========================================
 	api.Get("/wallets/me", wallet.GetWalletDashboardHandler(db))
+	api.Get("/billing/installments/:id/receipt", billing.DownloadReceiptHandler(db))
 	api.Post("/wallets/transfer", wallet.TransferHandler(db, validate))
 	api.Post("/payments/preference", payment.CreatePreferenceHandler())
 

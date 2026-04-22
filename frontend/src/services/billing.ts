@@ -52,3 +52,38 @@ export const payInstallment = async (
   );
   return response.data;
 };
+
+export const billingService = {
+  /**
+   * Descarga el PDF del comprobante de una cuota específica.
+   */
+  downloadReceipt: async (installmentId: string) => {
+    // 1. Hacemos la petición pidiendo un formato binario (blob)
+    const response = await api.get(
+      `/billing/installments/${installmentId}/receipt`,
+      {
+        responseType: "blob",
+      },
+    );
+
+    // 2. Creamos una URL temporal en la memoria del navegador
+    const fileURL = window.URL.createObjectURL(
+      new Blob([response.data], { type: "application/pdf" }),
+    );
+
+    // 3. Forzamos la descarga creando un enlace invisible y haciéndole clic
+    const fileLink = document.createElement("a");
+    fileLink.href = fileURL;
+    fileLink.setAttribute(
+      "download",
+      `recibo_${installmentId.substring(0, 8)}.pdf`,
+    );
+
+    document.body.appendChild(fileLink);
+    fileLink.click();
+
+    // 4. Limpiamos la memoria
+    fileLink.remove();
+    window.URL.revokeObjectURL(fileURL);
+  },
+};

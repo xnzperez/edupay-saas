@@ -2,12 +2,16 @@ import { useEffect, useState } from "react";
 import { sileo } from "sileo";
 import { useAuthStore } from "../../store/authStore";
 
-// Importamos los servicios reales
+// Importamos los servicios de wallet y billing
 import { getWalletDashboard } from "../../services/wallet";
-import { getMyInstallments, payInstallment } from "../../services/billing";
+import {
+  getMyInstallments,
+  payInstallment,
+  billingService,
+} from "../../services/billing";
 import { createPaymentPreference } from "../../services/payment";
 
-// Definimos las estructuras visuales basadas en lo que devuelve Go
+// --- INTERFACES ---
 interface Transaction {
   id: string;
   tx_type: string;
@@ -32,21 +36,23 @@ interface Installment {
 }
 
 export default function Dashboard() {
-  // Estados para la recarga de saldo
+  // Estados de recarga y usuario
   const [topUpAmount, setTopUpAmount] = useState<number | "">("");
   const [isRedirecting, setIsRedirecting] = useState(false);
-
   const user = useAuthStore((state) => state.user);
 
+  // Estados de datos financieros
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [debts, setDebts] = useState<Installment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [payingId, setPayingId] = useState<string | null>(null);
 
-  // Función para cargar todos los datos frescos desde Go
+  // Estados de carga para acciones (UX)
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  // Carga inicial de datos desde el backend (Go)
   const fetchDashboardData = async () => {
     try {
-      // Promise.all permite hacer ambas peticiones al mismo tiempo (más rápido)
       const [walletRes, debtsRes] = await Promise.all([
         getWalletDashboard(),
         getMyInstallments(),
@@ -54,36 +60,55 @@ export default function Dashboard() {
 
       setWallet(walletRes);
 
-      // Filtramos para mostrar solo las que están pendientes (por si Go devuelve todo el historial)
+      // Normalización de la respuesta de cuotas
       const pendingDebts = (
         Array.isArray(debtsRes)
           ? debtsRes
           : (debtsRes as any).installments || []
       ).filter((d: Installment) => d.status !== "PAID");
+
       setDebts(pendingDebts);
     } catch (error) {
-      console.error("Error cargando el dashboard", error);
+      console.error("Dashboard Fetch Error:", error);
       sileo.error({
-        title: "Error de conexión",
-        description: "No pudimos cargar tu información financiera.",
+        title: "Error de sincronización",
+        description: "No se pudo recuperar tu estado financiero actual.",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Se ejecuta automáticamente al entrar a la página
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
-  // Lógica para pagar la deuda
+  // Handler: Descarga de Comprobante PDF (Módulo 4)
+  const handleDownloadReceipt = async (installmentId: string) => {
+    setDownloadingId(installmentId);
+    try {
+      await billingService.downloadReceipt(installmentId);
+      sileo.success({
+        title: "Documento Generado",
+        description: "Tu estado de cuenta se ha descargado exitosamente.",
+      });
+    } catch (error) {
+      sileo.error({
+        title: "Error de Reportes",
+        description:
+          "El servidor de archivos no respondió. Intenta en unos minutos.",
+      });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  // Handler: Pago de Cuota (Lógica transaccional)
   const handlePayDebt = async (installmentId: string, amount: number) => {
     if (!wallet || wallet.current_balance < amount) {
       sileo.error({
         title: "Saldo Insuficiente",
-        description:
-          "No tienes suficientes fondos en tu billetera para pagar esta cuota.",
+        description: "Recarga tu billetera para cubrir el monto de esta cuota.",
       });
       return;
     }
@@ -91,31 +116,29 @@ export default function Dashboard() {
     setPayingId(installmentId);
     try {
       await payInstallment(installmentId);
-
       sileo.success({
-        title: "¡Pago Exitoso!",
-        description: "La cuota ha sido pagada y descontada de tu saldo.",
+        title: "¡Transacción Exitosa!",
+        description: "La cuota ha sido saldada y el registro actualizado.",
       });
-
-      // Recargamos los datos para que desaparezca la deuda y baje el saldo
       await fetchDashboardData();
     } catch (error: any) {
       sileo.error({
-        title: "Error al procesar el pago",
+        title: "Error en el Pago",
         description:
-          error.response?.data?.error || "Intenta nuevamente más tarde.",
+          error.response?.data?.error ||
+          "La transacción fue rechazada por el banco.",
       });
     } finally {
       setPayingId(null);
     }
   };
 
-  // NUEVO: Lógica para recargar saldo vía Mercado Pago
+  // Handler: Recarga externa (Mercado Pago)
   const handleTopUp = async () => {
     if (!topUpAmount || topUpAmount < 1000) {
       sileo.error({
-        title: "Monto inválido",
-        description: "El monto mínimo de recarga es de $1,000 COP",
+        title: "Monto No Válido",
+        description: "El monto mínimo de recarga es de $1,000 COP.",
       });
       return;
     }
@@ -123,13 +146,13 @@ export default function Dashboard() {
     setIsRedirecting(true);
     try {
       const response = await createPaymentPreference(Number(topUpAmount));
-
-      // Magia: Redirigimos al usuario a la página de Mercado Pago
       window.location.href = response.checkout_url;
     } catch (error: any) {
       sileo.error({
-        title: "Error al iniciar pago",
-        description: error.response?.data?.error || "Intenta nuevamente.",
+        title: "Error de Pasarela",
+        description:
+          error.response?.data?.error ||
+          "No se pudo iniciar la conexión con PSE.",
       });
       setIsRedirecting(false);
     }
@@ -137,53 +160,46 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center animate-pulse text-nord-4">
-        Cargando tu bóveda financiera...
+      <div className="flex h-64 items-center justify-center animate-pulse text-nord-4 font-mono">
+        ESTABLECIENDO CONEXIÓN SEGURA...
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Saludo */}
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Encabezado */}
       <div>
-        <h1 className="text-3xl font-extrabold text-nord-6 tracking-tight">
-          Hola, {user?.role === "STUDENT" ? "Estudiante" : "Usuario"} 👋
+        <h1 className="text-3xl font-black text-nord-6 tracking-tighter">
+          Dashboard <span className="text-nord-8">Financiero</span>
         </h1>
-        <p className="text-nord-4 mt-2 font-medium">
-          Este es el resumen de tu billetera institucional.
+        <p className="text-nord-4 mt-1 font-medium">
+          Sesión activa: {user?.email}
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* --- COLUMNA PRINCIPAL (Billetera y Movimientos) --- */}
+        {/* --- COLUMNA IZQUIERDA (Wallet + Movimientos) --- */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Tarjeta de la Billetera */}
-          <div className="bg-gradient-to-br from-nord-3 to-nord-1 p-8 rounded-3xl border border-nord-2 shadow-xl relative overflow-hidden">
-            {/* Adorno de fondo */}
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-nord-8/10 rounded-full blur-2xl"></div>
+          {/* Card de Billetera Principal */}
+          <div className="bg-nord-1 p-8 rounded-3xl border border-nord-2 shadow-2xl relative overflow-hidden">
+            <div className="absolute -right-8 -top-8 w-32 h-32 bg-nord-8/5 rounded-full blur-3xl"></div>
 
-            <p className="text-sm font-bold text-nord-4 uppercase tracking-wider mb-2 relative z-10">
-              Saldo Disponible (COP)
+            <p className="text-xs font-bold text-nord-4 uppercase tracking-widest mb-2">
+              Saldo Neto Disponible
             </p>
-            <h2 className="text-5xl font-black text-nord-8 tracking-tight relative z-10">
-              ${wallet?.current_balance.toLocaleString() || "0"}
+            <h2 className="text-5xl font-black text-nord-8 tabular-nums">
+              ${wallet?.current_balance.toLocaleString()}
             </h2>
 
-            <div className="mt-6 flex gap-4 relative z-10">
-              <button className="bg-nord-8 hover:bg-nord-9 text-nord-0 font-bold py-2 px-6 rounded-xl transition-all shadow-lg shadow-nord-8/20">
-                Transferir a compañero
-              </button>
-            </div>
-
-            {/* NUEVA SECCIÓN DE RECARGA */}
-            <div className="mt-8 pt-6 border-t border-nord-2/50 relative z-10">
-              <p className="text-sm font-bold text-nord-4 mb-3">
-                Recarga tu cuenta vía PSE o Tarjeta
+            {/* Formulario de Recarga */}
+            <div className="mt-10 pt-6 border-t border-nord-2/40">
+              <p className="text-sm font-bold text-nord-4 mb-4">
+                Recarga rápida vía Mercado Pago
               </p>
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-nord-4 font-bold">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-nord-4 font-bold">
                     $
                   </span>
                   <input
@@ -194,71 +210,58 @@ export default function Dashboard() {
                         e.target.value === "" ? "" : Number(e.target.value),
                       )
                     }
-                    placeholder="Ej. 50000"
-                    className="w-full pl-8 pr-4 py-3 bg-nord-0 border border-nord-3 rounded-xl text-nord-6 focus:ring-2 focus:ring-nord-8 focus:outline-none transition-all"
+                    placeholder="Monto a recargar"
+                    className="w-full pl-9 pr-4 py-3 bg-nord-0 border border-nord-3 rounded-xl text-nord-6 focus:ring-2 focus:ring-nord-8 focus:outline-none transition-all font-bold"
                   />
                 </div>
                 <button
                   onClick={handleTopUp}
                   disabled={isRedirecting || !topUpAmount}
-                  className="bg-nord-8 hover:bg-nord-9 text-nord-0 font-extrabold py-3 px-6 rounded-xl transition-all shadow-lg shadow-nord-8/20 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  className="bg-nord-8 hover:bg-nord-9 text-nord-0 font-extrabold py-3 px-8 rounded-xl transition-all shadow-lg shadow-nord-8/10 disabled:opacity-30"
                 >
-                  {isRedirecting ? "Conectando..." : "Recargar Saldo"}
+                  {isRedirecting ? "REDIRIGIENDO..." : "RECARGAR"}
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Historial de Transacciones */}
-          <div className="bg-nord-1 border border-nord-2 rounded-2xl overflow-hidden shadow-sm">
-            <div className="p-6 border-b border-nord-2">
-              <h3 className="text-lg font-bold text-nord-6">
-                Últimos Movimientos
+          {/* Historial de Movimientos */}
+          <div className="bg-nord-1 border border-nord-2 rounded-3xl overflow-hidden">
+            <div className="p-6 bg-nord-2/30">
+              <h3 className="text-sm font-black text-nord-6 uppercase tracking-wider">
+                Actividad Reciente
               </h3>
             </div>
-
             {wallet?.transactions.length === 0 ? (
-              <div className="p-8 text-center text-nord-4 font-medium">
-                No tienes movimientos recientes.
+              <div className="p-12 text-center text-nord-4 italic">
+                No hay registros en el historial.
               </div>
             ) : (
               <div className="divide-y divide-nord-2">
                 {wallet?.transactions.map((tx) => (
                   <div
                     key={tx.id}
-                    className="p-4 flex items-center justify-between hover:bg-nord-2/50 transition-colors"
+                    className="p-5 flex items-center justify-between hover:bg-nord-2/20 transition-colors"
                   >
                     <div className="flex items-center gap-4">
                       <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
-                          tx.tx_type === "DEPOSIT"
-                            ? "bg-nord-14/20 text-nord-14"
-                            : "bg-nord-11/20 text-nord-11"
-                        }`}
-                      >
-                        {tx.tx_type === "DEPOSIT" ? "↓" : "↑"}
-                      </div>
+                        className={`w-2 h-10 rounded-full ${tx.tx_type === "DEPOSIT" ? "bg-nord-14" : "bg-nord-11"}`}
+                      ></div>
                       <div>
-                        <p className="font-bold text-nord-6">
+                        <p className="font-bold text-nord-6 text-sm">
                           {tx.reference || "Transacción"}
                         </p>
-                        <p className="text-xs text-nord-4">
+                        <p className="text-xs text-nord-4 font-mono">
                           {new Date(tx.created_at).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p
-                        className={`font-black text-lg ${
-                          tx.tx_type === "DEPOSIT"
-                            ? "text-nord-14"
-                            : "text-nord-11"
-                        }`}
-                      >
-                        {tx.tx_type === "DEPOSIT" ? "+" : "-"}$
-                        {tx.amount.toLocaleString()}
-                      </p>
-                    </div>
+                    <p
+                      className={`font-black text-lg ${tx.tx_type === "DEPOSIT" ? "text-nord-14" : "text-nord-11"}`}
+                    >
+                      {tx.tx_type === "DEPOSIT" ? "+" : "-"}$
+                      {tx.amount.toLocaleString()}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -266,22 +269,21 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* --- COLUMNA LATERAL (Deudas / Cobros) --- */}
+        {/* --- COLUMNA DERECHA (Deudas) --- */}
         <div className="space-y-6">
-          <h3 className="text-lg font-bold text-nord-6 flex items-center gap-2">
-            Deudas Pendientes
+          <h3 className="text-sm font-black text-nord-6 uppercase tracking-wider flex items-center gap-2">
+            Compromisos Pendientes
             {debts.length > 0 && (
-              <span className="bg-nord-11 text-nord-0 text-xs px-2 py-1 rounded-full">
+              <span className="bg-nord-11 text-nord-0 px-2 py-0.5 rounded text-[10px]">
                 {debts.length}
               </span>
             )}
           </h3>
 
           {debts.length === 0 ? (
-            <div className="bg-nord-1 border border-dashed border-nord-3 p-8 rounded-2xl text-center">
-              <div className="text-4xl mb-3">🎉</div>
-              <p className="text-nord-4 font-medium">
-                ¡Estás al día con la universidad!
+            <div className="bg-nord-1 border border-dashed border-nord-3 p-10 rounded-3xl text-center">
+              <p className="text-nord-4 font-bold text-sm">
+                SIN DEUDAS ACTIVAS
               </p>
             </div>
           ) : (
@@ -289,27 +291,37 @@ export default function Dashboard() {
               {debts.map((debt) => (
                 <div
                   key={debt.id}
-                  className="bg-nord-1 border border-nord-11/30 p-5 rounded-2xl shadow-lg relative overflow-hidden group hover:border-nord-11 transition-colors"
+                  className="bg-nord-1 border border-nord-2 p-6 rounded-3xl shadow-lg hover:border-nord-8 transition-all group"
                 >
-                  <div className="absolute top-0 left-0 w-1 h-full bg-nord-11"></div>
-
-                  <p className="text-xs font-bold text-nord-4 uppercase mb-1">
-                    Vence: {new Date(debt.due_date).toLocaleDateString()}
+                  <p className="text-[10px] font-black text-nord-4 uppercase mb-2">
+                    Vencimiento: {new Date(debt.due_date).toLocaleDateString()}
                   </p>
-                  <h4 className="font-bold text-nord-6 text-lg">
+                  <h4 className="font-bold text-nord-6 leading-tight mb-4">
                     {debt.description}
                   </h4>
-                  <p className="text-2xl font-black text-nord-11 my-3">
+                  <p className="text-3xl font-black text-nord-8 mb-6">
                     ${debt.amount.toLocaleString()}
                   </p>
 
-                  <button
-                    onClick={() => handlePayDebt(debt.id, debt.amount)}
-                    disabled={payingId === debt.id}
-                    className="w-full bg-nord-11 hover:bg-red-600 text-nord-0 font-bold py-3 rounded-xl transition-all disabled:opacity-50"
-                  >
-                    {payingId === debt.id ? "Procesando..." : "Pagar Cuota"}
-                  </button>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => handlePayDebt(debt.id, debt.amount)}
+                      disabled={payingId === debt.id}
+                      className="w-full bg-nord-8 hover:bg-nord-9 text-nord-0 font-extrabold py-3 rounded-xl transition-all disabled:opacity-40"
+                    >
+                      {payingId === debt.id ? "PROCESANDO..." : "PAGAR AHORA"}
+                    </button>
+
+                    <button
+                      onClick={() => handleDownloadReceipt(debt.id)}
+                      disabled={downloadingId === debt.id}
+                      className="w-full bg-nord-2 hover:bg-nord-3 text-nord-6 font-bold py-2.5 rounded-xl transition-all disabled:opacity-40 text-xs flex items-center justify-center gap-2"
+                    >
+                      {downloadingId === debt.id
+                        ? "GENERANDO PDF..."
+                        : "📄 DESCARGAR COMPROBANTE"}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

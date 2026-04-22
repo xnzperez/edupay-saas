@@ -6,6 +6,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 
+	"github.com/johnfercher/maroto/pkg/consts"
+	"github.com/johnfercher/maroto/pkg/pdf"
+	"github.com/johnfercher/maroto/pkg/props"
 	"github.com/xnzperez/edupay-saas/pkg/database"
 )
 
@@ -254,5 +257,128 @@ func GetMyInstallmentsHandler(db *sqlx.DB) fiber.Handler {
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"installments": installments,
 		})
+	}
+}
+
+// ReceiptData almacena la información combinada para el PDF
+type ReceiptData struct {
+	InstallmentID string  `db:"installment_id"`
+	Description   string  `db:"description"`
+	Amount        float64 `db:"amount"`
+	PenaltyAmount float64 `db:"penalty_amount"`
+	Status        string  `db:"status"`
+	DueDate       string  `db:"due_date"`
+	StudentName   string  `db:"student_name"` // Asumo que tienes una columna 'name' o similar
+	StudentEmail  string  `db:"student_email"`
+	TenantName    string  `db:"tenant_name"`
+}
+
+// DownloadReceiptHandler genera y descarga el PDF del comprobante de pago
+func DownloadReceiptHandler(db *sqlx.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		installmentID := c.Params("id")
+
+		// 1. Consulta SQL (JOIN de 3 tablas)
+		query := `
+			SELECT 
+				i.id as installment_id, 
+				i.description, 
+				i.amount, 
+				i.penalty_amount, 
+				i.status, 
+				TO_CHAR(i.due_date, 'YYYY-MM-DD') as due_date,
+				u.full_name as student_name, 
+				u.email as student_email,
+				t.name as tenant_name
+			FROM installments i
+			JOIN users u ON i.user_id = u.id
+			JOIN tenants t ON i.tenant_id = t.id
+			WHERE i.id = $1
+		`
+
+		var data ReceiptData
+		err := db.Get(&data, query, installmentID)
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"error": "Cuota no encontrada o error en base de datos",
+			})
+		}
+
+		// 2. Inicializar el motor PDF (Maroto)
+		m := pdf.NewMaroto(consts.Portrait, consts.A4)
+		m.SetPageMargins(20, 20, 20)
+
+		// 3. Dibujar el Header
+		m.RegisterHeader(func() {
+			m.Row(20, func() {
+				m.Col(12, func() {
+					m.Text("Comprobante de Estado de Cuenta", props.Text{
+						Top:   12,
+						Size:  18,
+						Style: consts.Bold,
+						Align: consts.Center,
+					})
+				})
+			})
+		})
+
+		// 4. Dibujar el Cuerpo del Recibo (Grilla estilo Bootstrap)
+		m.Row(10, func() {
+			m.Col(12, func() {
+				m.Text(fmt.Sprintf("Institución: %s", data.TenantName), props.Text{Size: 12, Style: consts.Bold})
+			})
+		})
+		m.Row(10, func() {
+			m.Col(12, func() {
+				m.Text(fmt.Sprintf("Estudiante: %s (%s)", data.StudentName, data.StudentEmail), props.Text{Size: 10})
+			})
+		})
+
+		m.Row(10, func() {}) // Espaciador
+
+		m.Row(10, func() {
+			m.Col(4, func() { m.Text("Concepto:", props.Text{Style: consts.Bold}) })
+			m.Col(8, func() { m.Text(data.Description) })
+		})
+		m.Row(10, func() {
+			m.Col(4, func() { m.Text("Fecha Límite:", props.Text{Style: consts.Bold}) })
+			m.Col(8, func() { m.Text(data.DueDate) })
+		})
+		m.Row(10, func() {
+			m.Col(4, func() { m.Text("Estado Actual:", props.Text{Style: consts.Bold}) })
+			m.Col(8, func() { m.Text(data.Status) })
+		})
+
+		m.Row(10, func() {}) // Espaciador
+
+		// Totales
+		m.Row(10, func() {
+			m.Col(6, func() { m.Text("Subtotal:", props.Text{Style: consts.Bold, Align: consts.Right}) })
+			m.Col(6, func() { m.Text(fmt.Sprintf("$%.2f", data.Amount)) })
+		})
+		m.Row(10, func() {
+			m.Col(6, func() { m.Text("Mora (Penalty):", props.Text{Style: consts.Bold, Align: consts.Right}) })
+			m.Col(6, func() { m.Text(fmt.Sprintf("$%.2f", data.PenaltyAmount)) })
+		})
+		m.Row(12, func() {
+			m.Col(6, func() { m.Text("TOTAL A PAGAR:", props.Text{Size: 14, Style: consts.Bold, Align: consts.Right}) })
+			m.Col(6, func() {
+				m.Text(fmt.Sprintf("$%.2f", data.Amount+data.PenaltyAmount), props.Text{Size: 14, Style: consts.Bold})
+			})
+		})
+
+		// 5. Compilar el PDF a memoria RAM (sin tocar el disco duro)
+		// Maroto devuelve (bytes.Buffer, error), no recibe argumentos.
+		buf, err := m.Output()
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error generando PDF"})
+		}
+
+		// 6. Enviar el binario del PDF al Frontend
+		c.Set("Content-Type", "application/pdf")
+		// Sugiere al navegador abrirlo inline o descargarlo con este nombre
+		c.Set("Content-Disposition", fmt.Sprintf("inline; filename=\"recibo_%s.pdf\"", installmentID[:8]))
+
+		return c.Send(buf.Bytes())
 	}
 }
