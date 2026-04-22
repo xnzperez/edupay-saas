@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -42,6 +43,9 @@ func main() {
 
 	db := database.ConnectDB()
 	defer db.Close()
+
+	// Instanciamos el validador globalmente para pasarlo a los handlers
+	validate := validator.New()
 
 	app := fiber.New(fiber.Config{AppName: "EduPay API v1.0"})
 
@@ -83,7 +87,7 @@ func main() {
 	// 1. RUTAS DE ESTUDIANTES (Cualquier usuario logueado)
 	// ==========================================
 	api.Get("/wallets/me", wallet.GetWalletDashboardHandler(db))
-	api.Post("/wallets/transfer", wallet.TransferHandler(db))
+	api.Post("/wallets/transfer", wallet.TransferHandler(db, validate))
 	api.Post("/payments/preference", payment.CreatePreferenceHandler())
 
 	// 🎓 Módulo del Estudiante (Pagos de Cartera)
@@ -95,7 +99,7 @@ func main() {
 	// ==========================================
 	// Usamos el middleware auth.RequireRole("ADMIN") para proteger estos endpoints
 	api.Get("/users/search", auth.RequireRole("ADMIN"), user.SearchStudentHandler(db))
-	api.Post("/wallets/:user_id/deposit", auth.RequireRole("ADMIN"), wallet.DepositHandler(db))
+	api.Post("/wallets/:user_id/deposit", auth.RequireRole("ADMIN"), wallet.DepositHandler(db, validate))
 
 	// 💼 Módulo del Cajero (Facturación y Deudas)
 	api.Get("/billing/students/search", auth.RequireRole("ADMIN"), billing.SearchStudentsHandler(db))
