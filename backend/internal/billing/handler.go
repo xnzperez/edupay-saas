@@ -382,3 +382,25 @@ func DownloadReceiptHandler(db *sqlx.DB) fiber.Handler {
 		return c.Send(buf.Bytes())
 	}
 }
+
+// MercadoPagoWebhookHandler recibe las notificaciones de pagos de MP
+func MercadoPagoWebhookHandler(db *sqlx.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Mercado Pago puede enviar datos por Query Params o en el Body
+		topic := c.Query("topic")
+		if topic == "" {
+			topic = c.Query("type") // A veces usa "type" en la versión V1/V2
+		}
+		paymentID := c.Query("data.id")
+		if paymentID == "" {
+			paymentID = c.Query("id")
+		}
+
+		// LOG: Imprimimos en la terminal para ver qué nos mandó MP
+		fmt.Printf("🔔 [WEBHOOK MP] Recibido -> Topic/Type: %s | Payment ID: %s\n", topic, paymentID)
+
+		// REGLA DE ORO DE MERCADO PAGO: 
+		// Siempre debemos responder HTTP 200 OK inmediatamente para que no reintente.
+		return c.SendStatus(fiber.StatusOK)
+	}
+}

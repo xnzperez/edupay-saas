@@ -26,17 +26,18 @@ type MPItem struct {
 }
 
 // Usamos punteros para permitir omitir propiedades vacías y evitar el error 400
+// 1. Simplificamos la estructura (quitamos punteros para evitar nulos ocultos)
 type MPBackURLs struct {
-	Success *string `json:"success,omitempty"`
-	Failure *string `json:"failure,omitempty"`
-	Pending *string `json:"pending,omitempty"`
+	Success string `json:"success"`
+	Failure string `json:"failure"`
+	Pending string `json:"pending"`
 }
 
 type MPPreferenceBody struct {
 	Items             []MPItem   `json:"items"`
 	ExternalReference string     `json:"external_reference"`
 	BackURLs          MPBackURLs `json:"back_urls"`
-	AutoReturn        string     `json:"auto_return"`
+	// ELIMINADO: AutoReturn. Así evitamos que Mercado Pago bloquee el "http://localhost"
 }
 
 // CreatePreferenceHandler genera el link de pago dinámico
@@ -55,12 +56,12 @@ func CreatePreferenceHandler() fiber.Handler {
 			frontendURL = "http://localhost:5173" // Fallback seguro para entorno local
 		}
 
-		// Declaramos las URLs en variables antes para poder sacarles el puntero
-		successURL := fmt.Sprintf("%s/student/dashboard?status=approved", frontendURL)
-		failureURL := fmt.Sprintf("%s/student/dashboard?status=rejected", frontendURL)
-		pendingURL := fmt.Sprintf("%s/student/dashboard?status=pending", frontendURL)
+		// URLs limpias sin parámetros
+		successURL := fmt.Sprintf("%s/student/dashboard", frontendURL)
+		failureURL := fmt.Sprintf("%s/student/dashboard", frontendURL)
+		pendingURL := fmt.Sprintf("%s/student/dashboard", frontendURL)
 
-		// Configuramos la preferencia con las BackURLs dinámicas
+		// Configuramos la preferencia (Sin punteros y sin AutoReturn)
 		bodyData := MPPreferenceBody{
 			Items: []MPItem{
 				{
@@ -73,11 +74,10 @@ func CreatePreferenceHandler() fiber.Handler {
 			},
 			ExternalReference: userID,
 			BackURLs: MPBackURLs{
-				Success: &successURL,
-				Failure: &failureURL,
-				Pending: &pendingURL,
+				Success: successURL,
+				Failure: failureURL,
+				Pending: pendingURL,
 			},
-			AutoReturn: "approved",
 		}
 
 		jsonBody, err := json.Marshal(bodyData)

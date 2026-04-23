@@ -68,7 +68,8 @@ func main() {
 	})
 
 	app.Post("/admin/tenants", tenant.CreateTenantHandler(db))
-	app.Post("/webhook/mercadopago", payment.WebhookHandler(db))
+	// Webhooks externos (Públicos)
+	app.Post("/webhooks/mercadopago", payment.WebhookHandler(db))
 
 	// ==========================================
 	// GRUPO MULTI-TENANT (Requiere X-Tenant-ID)
