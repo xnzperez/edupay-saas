@@ -10,6 +10,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
+	"github.com/xnzperez/edupay-saas/internal/billing"
+	"github.com/xnzperez/edupay-saas/internal/mailer"
 	"github.com/xnzperez/edupay-saas/pkg/database"
 )
 
@@ -211,6 +213,35 @@ func WebhookHandler(db *sqlx.DB) fiber.Handler {
 				fmt.Println("❌ Error crítico guardando en DB:", err)
 			} else {
 				fmt.Println("💸 ¡BILLETERA ACTUALIZADA CON ÉXITO!")
+
+				// 1. Extraer nombre y correo del estudiante para el recibo
+				var user struct {
+					FullName string `db:"full_name"` // Ajusta si tu columna se llama "name"
+					Email    string `db:"email"`
+				}
+
+				errUser := db.Get(&user, "SELECT full_name, email FROM users WHERE id = $1", userID)
+				if errUser == nil {
+					// 2. Disparar proceso asíncrono (Goroutine)
+					// Esto permite responder 200 OK a Mercado Pago de inmediato
+					go func(uName, uEmail string, txAmount float64) {
+						fmt.Println("⚙️ Generando PDF en memoria...")
+						pdfBytes, err := billing.GenerateReceiptBytes(uName, txAmount)
+						if err != nil {
+							fmt.Println("⚠️ Error generando PDF:", err)
+							return
+						}
+
+						fmt.Println("📨 Enviando comprobante por Resend...")
+						// Importante: Asegúrate de importar tu paquete "mailer" arriba
+						err = mailer.SendReceiptEmail(uEmail, uName, txAmount, pdfBytes)
+						if err != nil {
+							fmt.Println("⚠️ Error enviando correo:", err)
+						}
+					}(user.FullName, user.Email, amount)
+				} else {
+					fmt.Println("⚠️ No se encontró el correo del usuario para enviar comprobante.")
+				}
 			}
 		}
 
