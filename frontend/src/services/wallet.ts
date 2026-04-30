@@ -70,3 +70,31 @@ export const depositFunds = async (userId: string, data: DepositRequest) => {
   const response = await api.post(`/wallets/${userId}/deposit`, data);
   return response.data;
 };
+
+// ==========================================
+// SERVICIOS DE AUDITORÍA (ADMIN)
+// ==========================================
+
+export interface GlobalTransactionDTO {
+  id: string;
+  tx_type: string;
+  amount: number;
+  reference: string;
+  created_at: string;
+  user_email: string;
+  user_full_name: string;
+}
+
+/**
+ * Obtiene el historial global de transacciones del tenant.
+ * Exclusivo para usuarios con rol ADMIN.
+ */
+export const getGlobalTransactions = async (
+  page: number = 1,
+  limit: number = 10,
+): Promise<PaginatedResponse<GlobalTransactionDTO>> => {
+  const response = await api.get<PaginatedResponse<GlobalTransactionDTO>>(
+    `/admin/transactions?page=${page}&limit=${limit}`,
+  );
+  return response.data;
+};

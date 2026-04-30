@@ -2,6 +2,8 @@ package wallet
 
 import (
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -297,6 +299,95 @@ func TransferHandler(db *sqlx.DB, validate *validator.Validate) fiber.Handler {
 			"message": "Transferencia enviada con éxito",
 			"amount":  req.Amount,
 			"to":      req.ToEmail,
+		})
+	}
+}
+
+// ==========================================
+// SERVICIOS DE ADMINISTRADOR (AUDITORÍA)
+// ==========================================
+
+// GlobalTransactionDTO representa el historial cruzado con el dueño de la cuenta
+type GlobalTransactionDTO struct {
+	ID           string    `json:"id" db:"id"`
+	TxType       string    `json:"tx_type" db:"tx_type"`
+	Amount       float64   `json:"amount" db:"amount"`
+	Reference    *string   `json:"reference" db:"reference"`   // Puntero para soportar campos NULL en Postgres
+	CreatedAt    time.Time `json:"created_at" db:"created_at"` // time.Time en lugar de string
+	UserEmail    string    `json:"user_email" db:"email"`
+	UserFullName string    `json:"user_full_name" db:"full_name"`
+}
+
+// GetAllTransactions extrae el flujo de caja global de todo el tenant con paginación
+func GetAllTransactions(db *sqlx.DB, page, limit int) ([]GlobalTransactionDTO, int, error) {
+	offset := (page - 1) * limit
+
+	var total int
+	// CORRECCIÓN 1: Contamos en tu tabla real (wallet_txs)
+	err := db.Get(&total, `SELECT COUNT(*) FROM wallet_txs`)
+	if err != nil {
+		log.Printf("[Auditoría] Error contando transacciones: %v\n", err)
+		return nil, 0, err
+	}
+
+	// CORRECCIÓN 2: Leemos de tu tabla real (wallet_txs)
+	query := `
+		SELECT 
+			t.id, t.tx_type, t.amount, t.reference, t.created_at,
+			u.email, u.full_name
+		FROM wallet_txs t
+		JOIN wallets w ON t.wallet_id = w.id
+		JOIN users u ON w.user_id = u.id
+		ORDER BY t.created_at DESC
+		LIMIT $1 OFFSET $2
+	`
+
+	var transactions []GlobalTransactionDTO
+	if err := db.Select(&transactions, query, limit, offset); err != nil {
+		log.Printf("[Auditoría] Error ejecutando SELECT JOIN: %v\n", err)
+		return nil, 0, err
+	}
+	if transactions == nil {
+		transactions = []GlobalTransactionDTO{}
+	}
+
+	return transactions, total, nil
+}
+
+// GetAdminTransactions maneja la petición HTTP para la auditoría global de cajeros
+func GetAdminTransactions(db *sqlx.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// 1. Parseamos los parámetros de paginación de la URL (ej: ?page=1&limit=10)
+		page := c.QueryInt("page", 1)
+		limit := c.QueryInt("limit", 10)
+
+		// Sanitización básica para evitar queries absurdos
+		if page < 1 {
+			page = 1
+		}
+		if limit < 1 || limit > 50 {
+			limit = 10
+		}
+
+		// 2. Llamamos a nuestra función de BD
+		transactions, total, err := GetAllTransactions(db, page, limit)
+		if err != nil {
+			log.Printf("[API] Fallo GetAdminTransactions: %v\n", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Error interno al recuperar la auditoría de transacciones",
+			})
+		}
+
+		// 3. Calculamos el total de páginas
+		totalPages := (total + limit - 1) / limit
+
+		// 4. Retornamos el contrato de Paginación exacto que React espera
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"data":        transactions,
+			"total":       total,
+			"page":        page,
+			"limit":       limit,
+			"total_pages": totalPages,
 		})
 	}
 }

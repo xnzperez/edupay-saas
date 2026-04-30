@@ -14,6 +14,7 @@ import AdminLayout from "./components/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import StudentsList from "./pages/admin/Students";
 import BillingList from "./pages/admin/Billing";
+import Transactions from "./pages/admin/Transactions";
 
 // Importamos la nueva vista de SuperAdmin
 import CreateTenant from "./pages/superadmin/CreateTenant";
@@ -40,6 +41,7 @@ export default function App() {
               <Route index element={<AdminDashboard />} />
               <Route path="students" element={<StudentsList />} />
               <Route path="billing" element={<BillingList />} />
+              <Route path="transactions" element={<Transactions />} />
             </Route>
           </Route>
 

@@ -106,6 +106,7 @@ func main() {
 	// Usamos el middleware auth.RequireRole("ADMIN") para proteger estos endpoints
 	api.Get("/users/search", auth.RequireRole("ADMIN"), user.SearchStudentHandler(db))
 	api.Post("/wallets/:user_id/deposit", auth.RequireRole("ADMIN"), wallet.DepositHandler(db, validate))
+	api.Get("/admin/transactions", auth.RequireRole("ADMIN"), wallet.GetAdminTransactions(db))
 
 	// 💼 Módulo del Cajero (Facturación y Deudas)
 	api.Get("/billing/students/search", auth.RequireRole("ADMIN"), billing.SearchStudentsHandler(db))
