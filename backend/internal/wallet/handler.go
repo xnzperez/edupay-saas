@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 
+	"github.com/xnzperez/edupay-saas/internal/utils"
 	"github.com/xnzperez/edupay-saas/pkg/database"
 )
 
@@ -36,10 +37,10 @@ type TransactionDTO struct {
 
 // WalletDashboardResponse es el "paquete completo" que enviaremos a la UI.
 type WalletDashboardResponse struct {
-	WalletID       string           `json:"wallet_id" db:"id"`
-	CurrentBalance float64          `json:"current_balance" db:"current_balance"`
-	UpdatedAt      string           `json:"updated_at" db:"updated_at"`
-	Transactions   []TransactionDTO `json:"transactions"`
+	WalletID       string                                  `json:"wallet_id" db:"id"`
+	CurrentBalance float64                                 `json:"current_balance" db:"current_balance"`
+	UpdatedAt      string                                  `json:"updated_at" db:"updated_at"`
+	Transactions   utils.PaginatedResponse[TransactionDTO] `json:"transactions"`
 }
 
 // ==========================================
@@ -113,25 +114,65 @@ func GetWalletDashboardHandler(db *sqlx.DB) fiber.Handler {
 		userID := c.Locals("user_id").(string)
 		tenantID := c.Locals("tenant_id").(string)
 
+		// 1. Extraer Query Params para Paginación (con valores por defecto seguros)
+		page := c.QueryInt("page", 1)
+		limit := c.QueryInt("limit", 10)
+
+		// Protección contra payloads abusivos (Seguridad)
+		if page < 1 {
+			page = 1
+		}
+		if limit < 1 {
+			limit = 10
+		}
+		if limit > 50 {
+			limit = 50
+		} // Máximo 50 por página para no saturar memoria RAM
+
 		var response WalletDashboardResponse
 
 		err := database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
+			// A. Buscar Billetera
 			walletQuery := `SELECT id, current_balance, updated_at FROM wallets WHERE user_id = $1`
 			if err := tx.Get(&response, walletQuery, userID); err != nil {
 				return fmt.Errorf("billetera no encontrada para este usuario")
 			}
 
+			// B. Contar el TOTAL de registros (Matemática pura para el paginador)
+			var totalRecords int
+			countQuery := `SELECT COUNT(*) FROM wallet_txs WHERE wallet_id = $1`
+			if err := tx.Get(&totalRecords, countQuery, response.WalletID); err != nil {
+				return fmt.Errorf("error contando historial: %v", err)
+			}
+
+			// C. Calcular Offset (Saltar registros anteriores)
+			offset := (page - 1) * limit
+
+			// D. Consultar la "Página" específica
 			txsQuery := `
 				SELECT id, tx_type, amount, COALESCE(reference, '') as reference, created_at
 				FROM wallet_txs
 				WHERE wallet_id = $1
 				ORDER BY created_at DESC
-				LIMIT 10`
+				LIMIT $2 OFFSET $3`
 
-			response.Transactions = []TransactionDTO{}
+			var txs []TransactionDTO
+			if err := tx.Select(&txs, txsQuery, response.WalletID, limit, offset); err != nil {
+				return fmt.Errorf("error al obtener el historial paginado: %v", err)
+			}
 
-			if err := tx.Select(&response.Transactions, txsQuery, response.WalletID); err != nil {
-				return fmt.Errorf("error al obtener el historial: %v", err)
+			// E. Si la página está vacía, iniciamos el slice para que devuelva [] en JSON y no null
+			if txs == nil {
+				txs = []TransactionDTO{}
+			}
+
+			// F. Empaquetar todo en nuestro DTO Genérico
+			response.Transactions = utils.PaginatedResponse[TransactionDTO]{
+				Data:       txs,
+				Total:      totalRecords,
+				Page:       page,
+				Limit:      limit,
+				TotalPages: utils.CalculateTotalPages(totalRecords, limit),
 			}
 
 			return nil
