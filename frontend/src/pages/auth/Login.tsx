@@ -21,7 +21,9 @@ export default function Login() {
   useEffect(() => {
     // Si ya hay un usuario logueado, lo sacamos del login automáticamente
     if (user) {
-      if (user.role === "ADMIN") {
+      if (user.role === "SUPERADMIN") {
+        navigate("/superadmin/create-tenant", { replace: true });
+      } else if (user.role === "ADMIN") {
         navigate("/admin", { replace: true });
       } else {
         navigate("/student", { replace: true });
@@ -51,7 +53,9 @@ export default function Login() {
       });
 
       const role = useAuthStore.getState().user?.role;
-      if (role === "ADMIN") {
+      if (role === "SUPERADMIN") {
+        navigate("/superadmin/create-tenant");
+      } else if (role === "ADMIN") {
         navigate("/admin");
       } else {
         navigate("/student");
