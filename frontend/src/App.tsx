@@ -8,6 +8,7 @@ import RoleRoute from "./components/RoleRoute";
 import StudentLayout from "./components/layouts/StudentLayout";
 import Dashboard from "./pages/student/Dashboard";
 import Transfer from "./pages/student/Transfer";
+import Store from "./pages/student/Store";
 
 import AdminLayout from "./components/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -47,6 +48,7 @@ export default function App() {
             <Route path="/student" element={<StudentLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="transfer" element={<Transfer />} />
+              <Route path="store" element={<Store />} />
             </Route>
           </Route>
         </Route>

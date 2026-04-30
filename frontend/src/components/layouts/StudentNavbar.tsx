@@ -40,6 +40,15 @@ export default function Navbar() {
             >
               Transferir
             </NavLink>
+            {/* NUEVO ENLACE: Tienda de Certificados */}
+            <NavLink
+              to="/student/store"
+              className={({ isActive }) =>
+                `font-medium transition-colors ${isActive ? "text-nord-8" : "text-nord-4 hover:text-nord-6"}`
+              }
+            >
+              Tienda
+            </NavLink>
           </div>
         </div>
 
