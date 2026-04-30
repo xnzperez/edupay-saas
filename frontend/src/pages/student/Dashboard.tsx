@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { sileo } from "sileo";
 import { useAuthStore } from "../../store/authStore";
 
-// Importamos los servicios de wallet y billing
+// 1. Importamos la lógica del servicio
 import { getWalletDashboard } from "../../services/wallet";
+// 2. Importamos ESTRICTAMENTE los tipos
+import type { WalletDashboardResponse } from "../../services/wallet";
+
 import {
   getMyInstallments,
   payInstallment,
@@ -11,22 +14,7 @@ import {
 } from "../../services/billing";
 import { createPaymentPreference } from "../../services/payment";
 
-// --- INTERFACES ---
-interface Transaction {
-  id: string;
-  tx_type: string;
-  amount: number;
-  reference: string;
-  created_at: string;
-}
-
-interface WalletData {
-  wallet_id: string;
-  current_balance: number;
-  updated_at: string;
-  transactions: Transaction[];
-}
-
+// --- INTERFACES (Solo conservamos las de deudas, el resto viene de walletService) ---
 interface Installment {
   id: string;
   description: string;
@@ -36,31 +24,31 @@ interface Installment {
 }
 
 export default function Dashboard() {
-  // Estados de recarga y usuario
   const [topUpAmount, setTopUpAmount] = useState<number | "">("");
   const [isRedirecting, setIsRedirecting] = useState(false);
   const user = useAuthStore((state) => state.user);
 
-  // Estados de datos financieros
-  const [wallet, setWallet] = useState<WalletData | null>(null);
+  // ESTADO NUEVO: Control de la página actual
+  const [page, setPage] = useState<number>(1);
+
+  // Reemplazamos WalletData por la interfaz oficial del servicio
+  const [wallet, setWallet] = useState<WalletDashboardResponse | null>(null);
   const [debts, setDebts] = useState<Installment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Estados de carga para acciones (UX)
   const [payingId, setPayingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  // Carga inicial de datos desde el backend (Go)
-  const fetchDashboardData = async () => {
+  // Le pasamos la página actual al fecth
+  const fetchDashboardData = async (currentPage: number) => {
     try {
       const [walletRes, debtsRes] = await Promise.all([
-        getWalletDashboard(),
+        getWalletDashboard(currentPage, 5), // Límite de 5 para que veas la paginación rápido
         getMyInstallments(),
       ]);
 
       setWallet(walletRes);
 
-      // Normalización de la respuesta de cuotas
       const pendingDebts = (
         Array.isArray(debtsRes)
           ? debtsRes
@@ -79,11 +67,11 @@ export default function Dashboard() {
     }
   };
 
+  // El useEffect ahora "escucha" los cambios en la variable 'page'
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    fetchDashboardData(page);
+  }, [page]);
 
-  // Handler: Descarga de Comprobante PDF (Módulo 4)
   const handleDownloadReceipt = async (installmentId: string) => {
     setDownloadingId(installmentId);
     try {
@@ -103,7 +91,6 @@ export default function Dashboard() {
     }
   };
 
-  // Handler: Pago de Cuota (Lógica transaccional)
   const handlePayDebt = async (installmentId: string, amount: number) => {
     if (!wallet || wallet.current_balance < amount) {
       sileo.error({
@@ -120,7 +107,8 @@ export default function Dashboard() {
         title: "¡Transacción Exitosa!",
         description: "La cuota ha sido saldada y el registro actualizado.",
       });
-      await fetchDashboardData();
+      // Recargamos manteniendo la página actual
+      await fetchDashboardData(page);
     } catch (error: any) {
       sileo.error({
         title: "Error en el Pago",
@@ -133,7 +121,6 @@ export default function Dashboard() {
     }
   };
 
-  // Handler: Recarga externa (Mercado Pago)
   const handleTopUp = async () => {
     if (!topUpAmount || topUpAmount < 1000) {
       sileo.error({
@@ -168,7 +155,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Encabezado */}
       <div>
         <h1 className="text-3xl font-black text-nord-6 tracking-tighter">
           Dashboard <span className="text-nord-8">Financiero</span>
@@ -179,12 +165,9 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* --- COLUMNA IZQUIERDA (Wallet + Movimientos) --- */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Card de Billetera Principal */}
           <div className="bg-nord-1 p-8 rounded-3xl border border-nord-2 shadow-2xl relative overflow-hidden">
             <div className="absolute -right-8 -top-8 w-32 h-32 bg-nord-8/5 rounded-full blur-3xl"></div>
-
             <p className="text-xs font-bold text-nord-4 uppercase tracking-widest mb-2">
               Saldo Neto Disponible
             </p>
@@ -192,7 +175,6 @@ export default function Dashboard() {
               ${wallet?.current_balance.toLocaleString()}
             </h2>
 
-            {/* Formulario de Recarga */}
             <div className="mt-10 pt-6 border-t border-nord-2/40">
               <p className="text-sm font-bold text-nord-4 mb-4">
                 Recarga rápida vía Mercado Pago
@@ -225,27 +207,29 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Historial de Movimientos */}
           <div className="bg-nord-1 border border-nord-2 rounded-3xl overflow-hidden">
-            <div className="p-6 bg-nord-2/30">
+            <div className="p-6 bg-nord-2/30 flex justify-between items-center">
               <h3 className="text-sm font-black text-nord-6 uppercase tracking-wider">
                 Actividad Reciente
               </h3>
             </div>
-            {wallet?.transactions.length === 0 ? (
+
+            {/* CORRECCIÓN: Ahora validamos .transactions.data.length */}
+            {wallet?.transactions.data.length === 0 ? (
               <div className="p-12 text-center text-nord-4 italic">
                 No hay registros en el historial.
               </div>
             ) : (
               <div className="divide-y divide-nord-2">
-                {wallet?.transactions.map((tx) => (
+                {/* CORRECCIÓN: Mapeamos sobre .transactions.data */}
+                {wallet?.transactions.data.map((tx) => (
                   <div
                     key={tx.id}
                     className="p-5 flex items-center justify-between hover:bg-nord-2/20 transition-colors"
                   >
                     <div className="flex items-center gap-4">
                       <div
-                        className={`w-2 h-10 rounded-full ${tx.tx_type === "DEPOSIT" ? "bg-nord-14" : "bg-nord-11"}`}
+                        className={`w-2 h-10 rounded-full ${tx.tx_type === "DEPOSIT" || tx.tx_type === "TRANSFER_IN" ? "bg-nord-14" : "bg-nord-11"}`}
                       ></div>
                       <div>
                         <p className="font-bold text-nord-6 text-sm">
@@ -257,19 +241,44 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <p
-                      className={`font-black text-lg ${tx.tx_type === "DEPOSIT" ? "text-nord-14" : "text-nord-11"}`}
+                      className={`font-black text-lg ${tx.tx_type === "DEPOSIT" || tx.tx_type === "TRANSFER_IN" ? "text-nord-14" : "text-nord-11"}`}
                     >
-                      {tx.tx_type === "DEPOSIT" ? "+" : "-"}$
-                      {tx.amount.toLocaleString()}
+                      {tx.tx_type === "DEPOSIT" || tx.tx_type === "TRANSFER_IN"
+                        ? "+"
+                        : "-"}
+                      ${tx.amount.toLocaleString()}
                     </p>
                   </div>
                 ))}
+
+                {/* CONTROLES DE PAGINACIÓN */}
+                {wallet && wallet.transactions.total_pages > 1 && (
+                  <div className="p-4 flex items-center justify-between bg-nord-2/10">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="text-xs font-bold px-4 py-2 bg-nord-3 text-nord-6 rounded-lg hover:bg-nord-4 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      ← ANTERIOR
+                    </button>
+                    <span className="text-xs font-bold text-nord-4 uppercase tracking-widest">
+                      Página {page} de {wallet.transactions.total_pages}
+                    </span>
+                    <button
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={page >= wallet.transactions.total_pages}
+                      className="text-xs font-bold px-4 py-2 bg-nord-3 text-nord-6 rounded-lg hover:bg-nord-4 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      SIGUIENTE →
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {/* --- COLUMNA DERECHA (Deudas) --- */}
+        {/* COLUMNA DERECHA INTACTA (Deudas) */}
         <div className="space-y-6">
           <h3 className="text-sm font-black text-nord-6 uppercase tracking-wider flex items-center gap-2">
             Compromisos Pendientes
@@ -302,7 +311,6 @@ export default function Dashboard() {
                   <p className="text-3xl font-black text-nord-8 mb-6">
                     ${debt.amount.toLocaleString()}
                   </p>
-
                   <div className="space-y-3">
                     <button
                       onClick={() => handlePayDebt(debt.id, debt.amount)}
@@ -311,7 +319,6 @@ export default function Dashboard() {
                     >
                       {payingId === debt.id ? "PROCESANDO..." : "PAGAR AHORA"}
                     </button>
-
                     <button
                       onClick={() => handleDownloadReceipt(debt.id)}
                       disabled={downloadingId === debt.id}
