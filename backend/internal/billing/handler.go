@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"time"
@@ -124,11 +125,18 @@ func CreateInstallmentHandler(db *sqlx.DB) fiber.Handler {
 // @Param id path string true "ID de la Cuota (UUID)"
 // @Success 200 {object} map[string]interface{} "La cuota ha sido saldada y el registro actualizado"
 // @Failure 400 {object} map[string]interface{} "Fondos insuficientes o cuota ya pagada"
+// @Failure 408 {object} map[string]interface{} "Tiempo de espera agotado"
 // @Router /billing/installments/{id}/pay [post]
 func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		installmentID := c.Params("id")
 		tenantID := c.Locals("tenant_id").(string)
+
+		// 🛡️ CONTEXT MANAGEMENT: Propagación de cancelación (Timeouts/Graceful Shutdowns)
+		// Extraemos el Context y asignamos un timeout estricto de 5 segundos.
+		// Esto previene que una query colgada mantenga ocupado el Pool de Conexiones si el cliente se desconecta.
+		ctx, cancel := context.WithTimeout(c.UserContext(), 5*time.Second)
+		defer cancel()
 
 		// Abrimos una transacción. Si en algún punto el saldo no alcanza o hay un error,
 		// TODAS las operaciones se cancelan automáticamente (Rollback).
@@ -137,8 +145,9 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 			// 0. Obtener la tasa de interés de mora del SuperAdmin
 			var interestRate float64
 			getTenantQuery := `SELECT default_interest_rate FROM tenants WHERE id = $1`
-			if err := tx.Get(&interestRate, getTenantQuery, tenantID); err != nil {
-				return fmt.Errorf("error al obtener la configuración financiera de la universidad")
+			// Utilizamos GetContext para asociar la query al ciclo de vida de la petición HTTP
+			if err := tx.GetContext(ctx, &interestRate, getTenantQuery, tenantID); err != nil {
+				return fmt.Errorf("error al obtener configuración financiera: %w", err)
 			}
 
 			// 1. Buscar la cuota y bloquearla (FOR UPDATE)
@@ -146,16 +155,15 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 				UserID  string    `db:"user_id"`
 				Amount  float64   `db:"amount"`
 				Status  string    `db:"status"`
-				DueDate time.Time `db:"due_date"` // <-- Añadido para verificar vencimiento
+				DueDate time.Time `db:"due_date"`
 			}
 
-			// Añadimos due_date al SELECT
 			getInstQuery := `SELECT user_id, amount, status, due_date FROM installments WHERE id = $1 FOR UPDATE`
-			if err := tx.Get(&installment, getInstQuery, installmentID); err != nil {
-				return fmt.Errorf("cuota no encontrada")
+			if err := tx.GetContext(ctx, &installment, getInstQuery, installmentID); err != nil {
+				return fmt.Errorf("cuota no encontrada: %w", err)
 			}
 
-			// Validar que la cuota no esté ya pagada
+			// Validar que la cuota no esté ya pagada (Idempotencia)
 			if installment.Status == "PAID" {
 				return fmt.Errorf("esta cuota ya fue pagada")
 			}
@@ -166,17 +174,14 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 			var penalty float64 = 0
 
 			if now.After(installment.DueDate) {
-				// Calculamos los días de retraso (redondeando hacia arriba a favor de la institución)
 				duration := now.Sub(installment.DueDate)
 				daysDelay := int(math.Ceil(duration.Hours() / 24.0))
 
 				if daysDelay > 0 {
-					// Fórmula: Monto * (Tasa Diaria * Días de Retraso)
 					penalty = installment.Amount * (interestRate * float64(daysDelay))
 					totalToPay += penalty
 				}
 			}
-			// ----------------------------------
 
 			// 2. Buscar la billetera del usuario y bloquearla (FOR UPDATE)
 			var wallet struct {
@@ -185,8 +190,8 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 			}
 
 			getWalletQuery := `SELECT id, current_balance FROM wallets WHERE user_id = $1 FOR UPDATE`
-			if err := tx.Get(&wallet, getWalletQuery, installment.UserID); err != nil {
-				return fmt.Errorf("billetera no encontrada")
+			if err := tx.GetContext(ctx, &wallet, getWalletQuery, installment.UserID); err != nil {
+				return fmt.Errorf("billetera no encontrada: %w", err)
 			}
 
 			// 3. Verificar si el estudiante tiene suficiente dinero (Validamos contra el total con mora)
@@ -194,16 +199,16 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 				return fmt.Errorf("fondos insuficientes para cubrir la cuota y la mora. Se requieren: %.2f", totalToPay)
 			}
 
-			// 4. Descontar el dinero de la billetera (Monto base + Penalidad)
+			// 4. Descontar el dinero de la billetera
 			updateWalletQuery := `UPDATE wallets SET current_balance = current_balance - $1 WHERE id = $2`
-			if _, err := tx.Exec(updateWalletQuery, totalToPay, wallet.ID); err != nil {
-				return err
+			if _, err := tx.ExecContext(ctx, updateWalletQuery, totalToPay, wallet.ID); err != nil {
+				return fmt.Errorf("error al actualizar billetera: %w", err)
 			}
 
 			// 5. Marcar la cuota como pagada
 			updateInstQuery := `UPDATE installments SET status = 'PAID' WHERE id = $1`
-			if _, err := tx.Exec(updateInstQuery, installmentID); err != nil {
-				return err
+			if _, err := tx.ExecContext(ctx, updateInstQuery, installmentID); err != nil {
+				return fmt.Errorf("error al actualizar cuota: %w", err)
 			}
 
 			// 6. Dejar el comprobante en el historial de transacciones
@@ -217,13 +222,22 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 				reference = fmt.Sprintf("Pago de cuota: %s (Incluye Mora: %.2f)", installmentID, penalty)
 			}
 
-			_, err := tx.Exec(txLogQuery, wallet.ID, tenantID, totalToPay, reference)
+			if _, err := tx.ExecContext(ctx, txLogQuery, wallet.ID, tenantID, totalToPay, reference); err != nil {
+				return fmt.Errorf("error al registrar auditoría: %w", err)
+			}
 
-			return err
+			return nil
 		})
 
-		// Manejo de errores de la transacción
+		// Manejo de errores controlados o time-outs
 		if err != nil {
+			// Evaluamos si el error proviene por agotamiento de límite de tiempo del contexto
+			if ctx.Err() != nil {
+				return c.Status(fiber.StatusRequestTimeout).JSON(fiber.Map{
+					"error":   "La transacción tomó demasiado tiempo y fue cancelada",
+					"details": ctx.Err().Error(),
+				})
+			}
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error":   "El pago fue rechazado",
 				"details": err.Error(),
