@@ -4,40 +4,45 @@
 
 CREATE TABLE tenants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    domain VARCHAR(100) UNIQUE NOT NULL,
+    name TEXT NOT NULL CHECK (LENGTH(name) <= 255),
+    domain TEXT UNIQUE NOT NULL CHECK (LENGTH(domain) <= 100),
     default_interest_rate NUMERIC(5,4) NOT NULL DEFAULT 0.0000, -- Ej: 0.0250 para 2.5%
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    role VARCHAR(50) NOT NULL CHECK (role IN ('ADMIN', 'STUDENT')),
-    email VARCHAR(255) NOT NULL,
-    full_name VARCHAR(255) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    role TEXT NOT NULL CHECK (role IN ('ADMIN', 'STUDENT')),
+    email TEXT NOT NULL CHECK (LENGTH(email) <= 255),
+    full_name TEXT NOT NULL CHECK (LENGTH(full_name) <= 255),
+    password_hash TEXT NOT NULL CHECK (LENGTH(password_hash) <= 255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (tenant_id, email) -- Un estudiante no puede registrarse dos veces en la misma U
 );
+CREATE INDEX ON users (tenant_id);
 
 CREATE TABLE wallets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     current_balance NUMERIC(15,2) NOT NULL DEFAULT 0.00, -- NUNCA usar FLOAT para dinero
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE INDEX ON wallets (tenant_id);
 
 CREATE TABLE wallet_txs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     wallet_id UUID NOT NULL REFERENCES wallets(id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    tx_type VARCHAR(50) NOT NULL CHECK (tx_type IN ('DEPOSIT', 'PURCHASE', 'FEE')),
+    tx_type TEXT NOT NULL CHECK (tx_type IN ('DEPOSIT', 'PURCHASE', 'FEE')),
     amount NUMERIC(15,2) NOT NULL,
-    reference VARCHAR(255),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    reference TEXT CHECK (LENGTH(reference) <= 255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE INDEX ON wallet_txs (wallet_id);
+CREATE INDEX ON wallet_txs (tenant_id);
+CREATE INDEX ON wallet_txs (created_at);
 
 -- ==========================================
 -- ROW-LEVEL SECURITY (RLS) - MULTI-TENANT

@@ -6,12 +6,14 @@ CREATE TABLE installments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    description VARCHAR(255) NOT NULL, -- Ej: "Matrícula Semestre 1", "Cuota 2"
+    description TEXT NOT NULL CHECK (LENGTH(description) <= 255), -- Ej: "Matrícula Semestre 1", "Cuota 2"
     amount NUMERIC(15,2) NOT NULL,     -- El valor a pagar
-    status VARCHAR(50) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PAID', 'OVERDUE')),
+    status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PAID', 'OVERDUE')),
     due_date DATE NOT NULL,            -- Fecha límite de pago
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE INDEX ON installments (tenant_id);
+CREATE INDEX ON installments (user_id);
 
 -- ==========================================
 -- SEGURIDAD MULTI-TENANT (RLS) PARA CUOTAS
