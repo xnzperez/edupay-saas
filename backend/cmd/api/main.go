@@ -111,6 +111,11 @@ func main() {
 	// 💼 Módulo del Cajero (Facturación y Deudas)
 	api.Get("/billing/students/search", auth.RequireRole("ADMIN"), billing.SearchStudentsHandler(db))
 	api.Post("/billing/installments", auth.RequireRole("ADMIN"), billing.CreateInstallmentHandler(db))
+	// Ruta para obtener TODAS las deudas (Solo Cajeros/Admins)
+	api.Get("/billing/installments", auth.RequireRole("ADMIN"), billing.GetAllInstallmentsHandler(db))
+
+	// 📊 Ruta de Métricas (Cajero)
+	api.Get("/billing/stats", auth.RequireRole("ADMIN"), billing.GetBillingStatsHandler(db))
 
 	port := os.Getenv("PORT")
 	if port == "" {

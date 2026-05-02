@@ -147,8 +147,27 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center animate-pulse text-nord-4 font-mono">
-        ESTABLECIENDO CONEXIÓN SEGURA...
+      <div className="space-y-8 animate-pulse duration-1000">
+        {/* Skeleton del Encabezado */}
+        <div className="space-y-3">
+          <div className="h-10 w-64 bg-nord-3/40 rounded-lg"></div>
+          <div className="h-5 w-48 bg-nord-3/20 rounded-lg"></div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Skeleton de la Columna Principal (Billetera y Gráficos) */}
+          <div className="lg:col-span-2 space-y-8">
+            <div className="h-64 bg-nord-1/80 rounded-3xl border border-nord-2/50"></div>
+            <div className="h-48 bg-nord-1/80 rounded-3xl border border-nord-2/50"></div>
+          </div>
+
+          {/* Skeleton de la Columna Lateral (Deudas) */}
+          <div className="space-y-4">
+            <div className="h-6 w-48 bg-nord-3/40 rounded-lg mb-6"></div>
+            <div className="h-40 bg-nord-1/80 rounded-3xl border border-nord-2/50"></div>
+            <div className="h-40 bg-nord-1/80 rounded-3xl border border-nord-2/50"></div>
+          </div>
+        </div>
       </div>
     );
   }

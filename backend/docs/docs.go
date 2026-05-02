@@ -19,6 +19,51 @@ const docTemplate = `{
     "basePath": "{{.BasePath}}",
     "paths": {
         "/billing/installments": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Obtiene el listado completo de deudas de la universidad con información del estudiante.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Facturación (Cajeros)"
+                ],
+                "summary": "Listar todas las deudas (Cajeros)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de la Universidad (UUID)",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista de deudas",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_billing.AdminInstallmentDTO"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno al consultar la base de datos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -50,7 +95,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/billing.CreateInstallmentReq"
+                            "$ref": "#/definitions/internal_billing.CreateInstallmentReq"
                         }
                     }
                 ],
@@ -158,7 +203,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.LoginRequest"
+                            "$ref": "#/definitions/internal_user.LoginRequest"
                         }
                     }
                 ],
@@ -189,7 +234,33 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "billing.CreateInstallmentReq": {
+        "internal_billing.AdminInstallmentDTO": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "student_email": {
+                    "type": "string"
+                },
+                "student_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_billing.CreateInstallmentReq": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -207,7 +278,7 @@ const docTemplate = `{
                 }
             }
         },
-        "user.LoginRequest": {
+        "internal_user.LoginRequest": {
             "type": "object",
             "properties": {
                 "email": {

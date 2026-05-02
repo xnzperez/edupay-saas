@@ -12,6 +12,7 @@ import Store from "./pages/student/Store";
 
 import AdminLayout from "./components/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
+import DebtsList from "./pages/admin/DebtsList";
 import StudentsList from "./pages/admin/Students";
 import BillingList from "./pages/admin/Billing";
 import Transactions from "./pages/admin/Transactions";
@@ -47,6 +48,7 @@ export default function App() {
               <Route path="students" element={<StudentsList />} />
               <Route path="billing" element={<BillingList />} />
               <Route path="transactions" element={<Transactions />} />
+              <Route path="debts" element={<DebtsList />} />
             </Route>
           </Route>
 

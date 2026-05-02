@@ -1,6 +1,23 @@
 basePath: /api
 definitions:
-  billing.CreateInstallmentReq:
+  internal_billing.AdminInstallmentDTO:
+    properties:
+      amount:
+        type: number
+      description:
+        type: string
+      due_date:
+        type: string
+      id:
+        type: string
+      status:
+        type: string
+      student_email:
+        type: string
+      student_name:
+        type: string
+    type: object
+  internal_billing.CreateInstallmentReq:
     properties:
       amount:
         type: number
@@ -12,7 +29,7 @@ definitions:
       user_id:
         type: string
     type: object
-  user.LoginRequest:
+  internal_user.LoginRequest:
     properties:
       email:
         type: string
@@ -30,6 +47,36 @@ info:
   version: "1.0"
 paths:
   /billing/installments:
+    get:
+      consumes:
+      - application/json
+      description: Obtiene el listado completo de deudas de la universidad con información
+        del estudiante.
+      parameters:
+      - description: ID de la Universidad (UUID)
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista de deudas
+          schema:
+            items:
+              $ref: '#/definitions/internal_billing.AdminInstallmentDTO'
+            type: array
+        "500":
+          description: Error interno al consultar la base de datos
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Listar todas las deudas (Cajeros)
+      tags:
+      - Facturación (Cajeros)
     post:
       consumes:
       - application/json
@@ -46,7 +93,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/billing.CreateInstallmentReq'
+          $ref: '#/definitions/internal_billing.CreateInstallmentReq'
       produces:
       - application/json
       responses:
@@ -122,7 +169,7 @@ paths:
         name: credentials
         required: true
         schema:
-          $ref: '#/definitions/user.LoginRequest'
+          $ref: '#/definitions/internal_user.LoginRequest'
       produces:
       - application/json
       responses:

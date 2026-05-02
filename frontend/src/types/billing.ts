@@ -31,3 +31,22 @@ export interface InstallmentDTO {
 export interface InstallmentsResponse {
   installments: InstallmentDTO[];
 }
+
+// DTO para la tabla general del Cajero
+export interface AdminInstallmentDTO {
+  id: string;
+  description: string;
+  amount: number;
+  due_date: string;
+  status: "PENDING" | "PAID" | "OVERDUE";
+  student_name: string;
+  student_email: string;
+}
+
+// DTO para las estadísticas del Dashboard del Cajero
+export interface BillingStatsDTO {
+  total_collected: number;
+  total_debt: number;
+  overdue_count: number;
+  active_students: number;
+}

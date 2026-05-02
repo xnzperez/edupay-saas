@@ -4,6 +4,7 @@ import type {
   CreateInstallmentReq,
   StudentSearchResult,
   InstallmentResponse,
+  AdminInstallmentDTO,
 } from "../types/billing";
 
 // ==========================================
@@ -28,6 +29,20 @@ export const createInstallment = async (
     "/billing/installments",
     data,
   );
+  return response.data;
+};
+
+// Función para obtener TODAS las deudas de la universidad (Cajeros)
+export const getAllInstallments = async (): Promise<AdminInstallmentDTO[]> => {
+  const response = await api.get<AdminInstallmentDTO[]>(
+    "/billing/installments",
+  );
+  return response.data;
+};
+
+// Función para obtener los KPIs en tiempo real
+export const getBillingStats = async (): Promise<BillingStatsDTO> => {
+  const response = await api.get<BillingStatsDTO>("/billing/stats");
   return response.data;
 };
 

@@ -475,3 +475,98 @@ func MercadoPagoWebhookHandler(db *sqlx.DB) fiber.Handler {
 		return c.SendStatus(fiber.StatusOK)
 	}
 }
+
+// Estructura para enviar los datos completos al cajero
+type AdminInstallmentDTO struct {
+	ID           string    `json:"id" db:"id"`
+	Description  string    `json:"description" db:"description"`
+	Amount       float64   `json:"amount" db:"amount"`
+	DueDate      time.Time `json:"due_date" db:"due_date"`
+	Status       string    `json:"status" db:"status"`
+	StudentName  string    `json:"student_name" db:"student_name"`
+	StudentEmail string    `json:"student_email" db:"student_email"`
+}
+
+// @Summary Listar todas las deudas (Cajeros)
+// @Description Obtiene el listado completo de deudas de la universidad con información del estudiante.
+// @Tags Facturación (Cajeros)
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param X-Tenant-ID header string true "ID de la Universidad (UUID)"
+// @Success 200 {array} AdminInstallmentDTO "Lista de deudas"
+// @Failure 500 {object} map[string]interface{} "Error interno al consultar la base de datos"
+// @Router /billing/installments [get]
+func GetAllInstallmentsHandler(db *sqlx.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Extraemos el tenant_id inyectado por el middleware de autenticación
+		tenantID := c.Locals("tenant_id").(string)
+
+		// Hacemos un JOIN para cruzar la deuda con el nombre y correo del estudiante
+		query := `
+			SELECT 
+				i.id, i.description, i.amount, i.due_date, i.status,
+				u.full_name as student_name, u.email as student_email
+			FROM installments i
+			JOIN users u ON i.user_id = u.id
+			WHERE i.tenant_id = $1
+			ORDER BY i.created_at DESC
+		`
+
+		// Inicializamos el slice para devolver [] en lugar de null si no hay datos
+		debts := []AdminInstallmentDTO{}
+
+		if err := db.Select(&debts, query, tenantID); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Error al consultar las obligaciones financieras",
+			})
+		}
+
+		return c.Status(fiber.StatusOK).JSON(debts)
+	}
+}
+
+// DTO para enviar las métricas al Dashboard del Cajero
+type BillingStatsDTO struct {
+	TotalCollected float64 `json:"total_collected" db:"total_collected"`
+	TotalDebt      float64 `json:"total_debt" db:"total_debt"`
+	OverdueCount   int     `json:"overdue_count" db:"overdue_count"`
+	ActiveStudents int     `json:"active_students" db:"active_students"`
+}
+
+// @Summary Obtener estadísticas financieras (Cajeros)
+// @Description Calcula en tiempo real el capital recaudado, la deuda activa y los estudiantes en mora.
+// @Tags Facturación (Cajeros)
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param X-Tenant-ID header string true "ID de la Universidad (UUID)"
+// @Success 200 {object} BillingStatsDTO "Métricas calculadas exitosamente"
+// @Failure 500 {object} map[string]interface{} "Error interno al calcular métricas"
+// @Router /billing/stats [get]
+func GetBillingStatsHandler(db *sqlx.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		tenantID := c.Locals("tenant_id").(string)
+
+		// Consulta optimizada para PostgreSQL usando FILTER para evitar múltiples queries
+		query := `
+			SELECT 
+				COALESCE(SUM(amount) FILTER (WHERE status = 'PAID'), 0) as total_collected,
+				COALESCE(SUM(amount) FILTER (WHERE status IN ('PENDING', 'OVERDUE')), 0) as total_debt,
+				COUNT(DISTINCT user_id) FILTER (WHERE status = 'OVERDUE') as overdue_count,
+				(SELECT COUNT(id) FROM users WHERE tenant_id = $1 AND role = 'STUDENT') as active_students
+			FROM installments
+			WHERE tenant_id = $1
+		`
+
+		stats := BillingStatsDTO{}
+
+		if err := db.Get(&stats, query, tenantID); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Error al procesar las métricas financieras",
+			})
+		}
+
+		return c.Status(fiber.StatusOK).JSON(stats)
+	}
+}
