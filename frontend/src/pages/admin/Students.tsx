@@ -65,10 +65,14 @@ export default function Students() {
       });
 
       // Actualizamos el saldo visualmente si Go responde OK
-      setSelectedStudent({
-        ...selectedStudent,
-        balance: selectedStudent.balance + data.amount,
-      });
+      setSelectedStudent((prev) =>
+        prev
+          ? {
+              ...prev,
+              balance: prev.balance + data.amount,
+            }
+          : prev
+      );
 
       sileo.success({
         title: "Transacción Exitosa",
