@@ -18,6 +18,119 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/billing/installments": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Permite a un cajero asignar una nueva obligación financiera a un estudiante. Validado contra fechas pasadas.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Facturación (Cajeros)"
+                ],
+                "summary": "Crear una nueva deuda/cuota",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de la Universidad (UUID)",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos de la nueva cuota (Monto, Fecha, Descripción)",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/billing.CreateInstallmentReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Cuota generada exitosamente",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "JSON o fecha inválida",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno al procesar transacción RLS",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/billing/installments/{id}/pay": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Descuenta el saldo de la billetera del estudiante para pagar una cuota. Calcula interés de mora dinámico si está vencida.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Facturación (Estudiantes)"
+                ],
+                "summary": "Pagar una cuota o deuda",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de la Universidad (UUID)",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID de la Cuota (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "La cuota ha sido saldada y el registro actualizado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Fondos insuficientes o cuota ya pagada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/users/login": {
             "post": {
                 "description": "Autentica a un usuario validando sus credenciales y devuelve un token JWT.",
@@ -73,60 +186,27 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/wallets/me": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Devuelve el saldo actual y el historial de transacciones del usuario autenticado a través del token JWT.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Billetera"
-                ],
-                "summary": "Obtener dashboard de la billetera",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID de la Universidad (UUID)",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Dashboard cargado exitosamente",
-                        "schema": {
-                            "$ref": "#/definitions/wallet.WalletDashboardResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Token inválido, expirado o ausente",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Billetera no encontrada",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
+        "billing.CreateInstallmentReq": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "description": "Formato esperado: YYYY-MM-DD",
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "user.LoginRequest": {
             "type": "object",
             "properties": {
@@ -134,48 +214,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "password": {
-                    "type": "string"
-                }
-            }
-        },
-        "wallet.TransactionDTO": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "number"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "reference": {
-                    "type": "string"
-                },
-                "tx_type": {
-                    "description": "DEPOSIT, PURCHASE, FEE",
-                    "type": "string"
-                }
-            }
-        },
-        "wallet.WalletDashboardResponse": {
-            "type": "object",
-            "properties": {
-                "current_balance": {
-                    "type": "number"
-                },
-                "transactions": {
-                    "description": "Un arreglo con el historial",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/wallet.TransactionDTO"
-                    }
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "wallet_id": {
                     "type": "string"
                 }
             }

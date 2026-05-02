@@ -1,38 +1,22 @@
 basePath: /api
 definitions:
+  billing.CreateInstallmentReq:
+    properties:
+      amount:
+        type: number
+      description:
+        type: string
+      due_date:
+        description: 'Formato esperado: YYYY-MM-DD'
+        type: string
+      user_id:
+        type: string
+    type: object
   user.LoginRequest:
     properties:
       email:
         type: string
       password:
-        type: string
-    type: object
-  wallet.TransactionDTO:
-    properties:
-      amount:
-        type: number
-      created_at:
-        type: string
-      id:
-        type: string
-      reference:
-        type: string
-      tx_type:
-        description: DEPOSIT, PURCHASE, FEE
-        type: string
-    type: object
-  wallet.WalletDashboardResponse:
-    properties:
-      current_balance:
-        type: number
-      transactions:
-        description: Un arreglo con el historial
-        items:
-          $ref: '#/definitions/wallet.TransactionDTO'
-        type: array
-      updated_at:
-        type: string
-      wallet_id:
         type: string
     type: object
 host: localhost:3000
@@ -45,6 +29,82 @@ info:
   title: EduPay SaaS API
   version: "1.0"
 paths:
+  /billing/installments:
+    post:
+      consumes:
+      - application/json
+      description: Permite a un cajero asignar una nueva obligación financiera a un
+        estudiante. Validado contra fechas pasadas.
+      parameters:
+      - description: ID de la Universidad (UUID)
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Datos de la nueva cuota (Monto, Fecha, Descripción)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/billing.CreateInstallmentReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Cuota generada exitosamente
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: JSON o fecha inválida
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Error interno al procesar transacción RLS
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Crear una nueva deuda/cuota
+      tags:
+      - Facturación (Cajeros)
+  /billing/installments/{id}/pay:
+    post:
+      consumes:
+      - application/json
+      description: Descuenta el saldo de la billetera del estudiante para pagar una
+        cuota. Calcula interés de mora dinámico si está vencida.
+      parameters:
+      - description: ID de la Universidad (UUID)
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: ID de la Cuota (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: La cuota ha sido saldada y el registro actualizado
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Fondos insuficientes o cuota ya pagada
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Pagar una cuota o deuda
+      tags:
+      - Facturación (Estudiantes)
   /users/login:
     post:
       consumes:
@@ -84,40 +144,6 @@ paths:
       summary: Iniciar sesión en el sistema
       tags:
       - Autenticación
-  /wallets/me:
-    get:
-      consumes:
-      - application/json
-      description: Devuelve el saldo actual y el historial de transacciones del usuario
-        autenticado a través del token JWT.
-      parameters:
-      - description: ID de la Universidad (UUID)
-        in: header
-        name: X-Tenant-ID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Dashboard cargado exitosamente
-          schema:
-            $ref: '#/definitions/wallet.WalletDashboardResponse'
-        "401":
-          description: Token inválido, expirado o ausente
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Billetera no encontrada
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Obtener dashboard de la billetera
-      tags:
-      - Billetera
 securityDefinitions:
   BearerAuth:
     description: Escribe 'Bearer ' seguido de tu token JWT.

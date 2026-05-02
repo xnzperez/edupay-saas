@@ -49,6 +49,19 @@ type StudentSearchResult struct {
 // ==========================================
 
 // CreateInstallmentHandler inserta una nueva cuota en estado 'PENDING'.
+
+// @Summary Crear una nueva deuda/cuota
+// @Description Permite a un cajero asignar una nueva obligación financiera a un estudiante. Validado contra fechas pasadas.
+// @Tags Facturación (Cajeros)
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param X-Tenant-ID header string true "ID de la Universidad (UUID)"
+// @Param request body CreateInstallmentReq true "Datos de la nueva cuota (Monto, Fecha, Descripción)"
+// @Success 201 {object} map[string]interface{} "Cuota generada exitosamente"
+// @Failure 400 {object} map[string]interface{} "JSON o fecha inválida"
+// @Failure 500 {object} map[string]interface{} "Error interno al procesar transacción RLS"
+// @Router /billing/installments [post]
 func CreateInstallmentHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		tenantID := c.Locals("tenant_id").(string)
@@ -100,6 +113,18 @@ func CreateInstallmentHandler(db *sqlx.DB) fiber.Handler {
 }
 
 // PayInstallmentHandler procesa el pago de una cuota usando el saldo de la billetera del estudiante.
+
+// @Summary Pagar una cuota o deuda
+// @Description Descuenta el saldo de la billetera del estudiante para pagar una cuota. Calcula interés de mora dinámico si está vencida.
+// @Tags Facturación (Estudiantes)
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param X-Tenant-ID header string true "ID de la Universidad (UUID)"
+// @Param id path string true "ID de la Cuota (UUID)"
+// @Success 200 {object} map[string]interface{} "La cuota ha sido saldada y el registro actualizado"
+// @Failure 400 {object} map[string]interface{} "Fondos insuficientes o cuota ya pagada"
+// @Router /billing/installments/{id}/pay [post]
 func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		installmentID := c.Params("id")
