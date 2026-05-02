@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { sileo } from "sileo";
 import {
   getGlobalTransactions,
   type GlobalTransactionDTO,
@@ -18,12 +17,6 @@ export default function Transactions() {
       setTransactions(response.data);
       setTotalPages(response.total_pages);
     } catch (error: any) {
-      sileo.error({
-        title: "Error de Auditoría",
-        description:
-          (error.response?.data?.message || error.response?.data?.error) ||
-          "No se pudo cargar el historial de transacciones globales.",
-      });
     } finally {
       setIsLoading(false);
     }

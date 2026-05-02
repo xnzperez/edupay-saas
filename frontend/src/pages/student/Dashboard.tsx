@@ -58,10 +58,6 @@ export default function Dashboard() {
       setDebts(pendingDebts);
     } catch (error) {
       console.error("Dashboard Fetch Error:", error);
-      sileo.error({
-        title: "Error de sincronización",
-        description: "No se pudo recuperar tu estado financiero actual.",
-      });
     } finally {
       setIsLoading(false);
     }
@@ -81,11 +77,6 @@ export default function Dashboard() {
         description: "Tu estado de cuenta se ha descargado exitosamente.",
       });
     } catch (error) {
-      sileo.error({
-        title: "Error de Reportes",
-        description:
-          "El servidor de archivos no respondió. Intenta en unos minutos.",
-      });
     } finally {
       setDownloadingId(null);
     }
@@ -110,12 +101,6 @@ export default function Dashboard() {
       // Recargamos manteniendo la página actual
       await fetchDashboardData(page);
     } catch (error: any) {
-      sileo.error({
-        title: "Error en el Pago",
-        description:
-          (error.response?.data?.message || error.response?.data?.error) ||
-          "La transacción fue rechazada por el banco.",
-      });
     } finally {
       setPayingId(null);
     }
@@ -135,12 +120,6 @@ export default function Dashboard() {
       const response = await createPaymentPreference(Number(topUpAmount));
       window.location.href = response.checkout_url;
     } catch (error: any) {
-      sileo.error({
-        title: "Error de Pasarela",
-        description:
-          (error.response?.data?.message || error.response?.data?.error) ||
-          "No se pudo iniciar la conexión con PSE.",
-      });
       setIsRedirecting(false);
     }
   };

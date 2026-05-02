@@ -40,12 +40,6 @@ export default function Transfer() {
       // Como no hay errores, el código continúa y ejecuta la redirección
       navigate("/dashboard");
     } catch (error: any) {
-      // Alerta de error con la sintaxis correcta
-      sileo.error({
-        title: "Transferencia rechazada",
-        description:
-          (error.response?.data?.message || error.response?.data?.error) || "No se pudo realizar la transferencia",
-      });
     } finally {
       setIsSending(false);
     }

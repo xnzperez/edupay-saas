@@ -61,10 +61,6 @@ export default function Login() {
         navigate("/student");
       }
     } catch (error: any) {
-      sileo.error({
-        title: "Error de autenticación",
-        description: (error.response?.data?.message || error.response?.data?.error) || "Credenciales incorrectas",
-      });
     } finally {
       setIsLoading(false);
     }

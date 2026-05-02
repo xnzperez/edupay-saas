@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { sileo } from "sileo";
 import { getAllInstallments } from "../../services/billing";
 import type { AdminInstallmentDTO } from "../../types/billing";
 
@@ -14,12 +13,6 @@ export default function DebtsList() {
         // Go devuelve null si no hay filas, nos aseguramos de setear un array vacío
         setDebts(data || []);
       } catch (error: any) {
-        sileo.error({
-          title: "Error de conexión",
-          description:
-            (error.response?.data?.message || error.response?.data?.error) ||
-            "No se pudieron cargar las obligaciones financieras.",
-        });
       } finally {
         setIsLoading(false);
       }

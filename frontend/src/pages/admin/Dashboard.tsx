@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router"; // Asegúrate de importar esto si usas react-router-dom / react-router
-import { sileo } from "sileo";
 import { getBillingStats } from "../../services/billing";
 import type { BillingStatsDTO } from "../../types/billing";
 
@@ -14,10 +13,6 @@ export default function AdminDashboard() {
         const data = await getBillingStats();
         setStats(data);
       } catch (error: any) {
-        sileo.error({
-          title: "Error de sincronización",
-          description: "No se pudieron cargar las métricas en tiempo real.",
-        });
       } finally {
         setIsLoading(false);
       }

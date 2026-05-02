@@ -56,12 +56,6 @@ export default function Billing() {
         setSearchResults(students);
       }
     } catch (error: any) {
-      sileo.error({
-        title: "Búsqueda fallida",
-        description:
-          (error.response?.data?.message || error.response?.data?.error) ||
-          "Error al conectar con la base de datos.",
-      });
     } finally {
       setIsSearching(false);
     }
@@ -89,11 +83,6 @@ export default function Billing() {
       setSearchResults([]);
       setSearchQuery("");
     } catch (error: any) {
-      sileo.error({
-        title: "Error al facturar",
-        description:
-          (error.response?.data?.message || error.response?.data?.error) || "No se pudo generar la cuota.",
-      });
     } finally {
       setIsBilling(false);
     }

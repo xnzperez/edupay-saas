@@ -49,10 +49,6 @@ export default function Students() {
       const student = await searchStudentByEmail(searchQuery);
       setSelectedStudent(student);
     } catch (error: any) {
-      sileo.error({
-        title: "Búsqueda fallida",
-        description: (error.response?.data?.message || error.response?.data?.error) || "Estudiante no encontrado.",
-      });
     } finally {
       setIsSearching(false);
     }
@@ -83,12 +79,6 @@ export default function Students() {
 
       reset();
     } catch (error: any) {
-      sileo.error({
-        title: "Error en el depósito",
-        description:
-          (error.response?.data?.message || error.response?.data?.error) ||
-          "Hubo un problema al procesar la recarga.",
-      });
     } finally {
       setIsDepositing(false);
     }

@@ -45,12 +45,6 @@ export default function Store() {
         description: `El saldo fue descontado. Tu ${itemName} llegará al correo asociado en breve.`,
       });
     } catch (error: any) {
-      sileo.error({
-        title: "Transacción Fallida",
-        description:
-          (error.response?.data?.message || error.response?.data?.error) ||
-          "No se pudo procesar la compra del certificado.",
-      });
     } finally {
       setPurchasingId(null);
     }

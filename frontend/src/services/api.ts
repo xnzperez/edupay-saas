@@ -1,5 +1,6 @@
 import axios from "axios";
-import { useAuthStore } from "../store/authStore"; // Importamos el store
+import { useAuthStore } from "../store/authStore";
+import { sileo } from "sileo";
 
 // Instancia base conectada al backend de Go
 export const api = axios.create({
@@ -18,7 +19,7 @@ api.interceptors.request.use(
       config.headers["X-Tenant-ID"] = tenantId;
     }
 
-    // ¡CORRECCIÓN CRÍTICA!: Ahora busca "token", exactamente como lo guarda Zustand
+    // Buscar "token" exactamente como lo guarda Zustand
     const token = localStorage.getItem("token");
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
@@ -33,20 +34,44 @@ api.interceptors.request.use(
 
 // --- INTERCEPTOR DE RESPUESTA (De entrada) ---
 api.interceptors.response.use(
-  (response) => response, // Si todo sale bien, deja pasar la data
+  (response) => response, // Si todo sale bien, deja pasar la data al componente
   (error) => {
-    // Si Go nos responde con un 401 (No Autorizado)
+    // 1. Manejo Crítico: Sesión expirada (401)
     if (error.response?.status === 401) {
       console.warn(
         "🔒 API: Token inválido, expirado o ausente. Limpiando sesión...",
       );
-
-      // 1. Ejecutamos el logout de Zustand (esto borra el "token" del localStorage)
       useAuthStore.getState().logout();
-
-      // 2. Mandamos al usuario al login forzosamente rompiendo el ciclo de React Router
       window.location.href = "/login";
+
+      // Retornamos inmediatamente para no disparar notificaciones extrañas al usuario
+      return Promise.reject(error);
     }
+
+    // 2. Manejo Global de Errores con Sileo (400, 403, 404, 500...)
+    if (error.response) {
+      // Extraemos el mensaje unificado que seteamos en Go con Antigravity
+      const serverMessage =
+        error.response.data?.message || error.response.data?.error;
+      const fallbackMessage =
+        "Ocurrió un error en el servidor. Inténtalo más tarde.";
+
+      sileo.error({
+        title: "Operación rechazada",
+        description: serverMessage || fallbackMessage,
+        // TODO (Theme): Cuando implementemos el selector Light/Dark,
+        // pasaremos el tema aquí leyendo directamente del DOM o localStorage:
+        // theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+      });
+    } else if (error.request) {
+      // 3. Manejo de caída de red (El servidor de Go está apagado o no hay internet)
+      sileo.error({
+        title: "Error de Conexión",
+        description: "No se pudo conectar con el servidor central.",
+      });
+    }
+
+    // Devolvemos el error al componente por si necesita hacer algo localmente (ej. apagar un spinner)
     return Promise.reject(error);
   },
 );
