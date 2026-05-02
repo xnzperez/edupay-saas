@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
 	"github.com/johnfercher/maroto/pkg/consts"
@@ -138,6 +139,15 @@ func CreateInstallmentHandler(db *sqlx.DB) fiber.Handler {
 func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		installmentID := c.Params("id")
+
+		// 🛡️ LAYER 1 DEFENSE (FAIL-FAST): Validar formato UUID antes de tocar la BD
+		if _, err := uuid.Parse(installmentID); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error":   "ValidationError",
+				"message": "El ID de la cuota proporcionado no tiene un formato UUID válido",
+			})
+		}
+
 		tenantID := c.Locals("tenant_id").(string)
 
 		// 🛡️ CONTEXT MANAGEMENT: Propagación de cancelación (Timeouts/Graceful Shutdowns)
