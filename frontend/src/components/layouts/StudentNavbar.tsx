@@ -13,7 +13,7 @@ export default function Navbar() {
 
   return (
     // Contenedor principal del Navbar usando el color secundario de la paleta Nord
-    <nav className="bg-nord-1 border-b border-nord-2 px-8 py-4 sticky top-0 z-50 shadow-sm">
+    <nav className="bg-nord-1 border-b border-nord-2 px-8 py-4 sticky top-0 z-40 shadow-sm">
       <div className="max-w-6xl mx-auto flex justify-between items-center">
         {/* Sección Izquierda: Logo y Enlaces */}
         <div className="flex items-center gap-8">

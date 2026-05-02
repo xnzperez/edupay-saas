@@ -23,7 +23,7 @@ import CreateTenant from "./pages/superadmin/CreateTenant";
 export default function App() {
   return (
     <BrowserRouter>
-      <Toaster position="top-right" />
+      <Toaster position="top-center" theme="dark" className="z-[9999]" />
 
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />

@@ -2,6 +2,8 @@ package billing
 
 import (
 	"fmt"
+	"math"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
@@ -56,14 +58,30 @@ func CreateInstallmentHandler(db *sqlx.DB) fiber.Handler {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "JSON inválido"})
 		}
 
+		// --- 1. VALIDACIÓN DE FECHA ESTRICTA (UTC) ---
+		dueDate, err := time.Parse("2006-01-02", req.DueDate)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Formato de fecha inválido. Debe ser YYYY-MM-DD"})
+		}
+
+		// Normalizamos ambas fechas a UTC y cortamos las horas/minutos
+		today := time.Now().UTC().Truncate(24 * time.Hour)
+		dueDateUTC := dueDate.UTC().Truncate(24 * time.Hour)
+
+		if dueDateUTC.Before(today) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Operación rechazada. No puedes crear una deuda con fecha de vencimiento en el pasado.",
+			})
+		}
+
 		var newInstallmentID string
 
 		// Utilizamos nuestra transacción RLS para que la cuota quede asegurada en el Tenant actual.
-		err := database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
+		err = database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
 			query := `
-				INSERT INTO installments (tenant_id, user_id, description, amount, due_date)
-				VALUES ($1, $2, $3, $4, $5)
-				RETURNING id`
+                INSERT INTO installments (tenant_id, user_id, description, amount, due_date)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id`
 			return tx.QueryRow(query, tenantID, req.UserID, req.Description, req.Amount, req.DueDate).Scan(&newInstallmentID)
 		})
 
@@ -91,15 +109,23 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 		// TODAS las operaciones se cancelan automáticamente (Rollback).
 		err := database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
 
-			// 1. Buscar la cuota y bloquearla (FOR UPDATE)
-			// Bloqueamos la fila para evitar que el usuario intente pagar la misma cuota dos veces al mismo tiempo.
-			var installment struct {
-				UserID string  `db:"user_id"`
-				Amount float64 `db:"amount"`
-				Status string  `db:"status"`
+			// 0. Obtener la tasa de interés de mora del SuperAdmin
+			var interestRate float64
+			getTenantQuery := `SELECT default_interest_rate FROM tenants WHERE id = $1`
+			if err := tx.Get(&interestRate, getTenantQuery, tenantID); err != nil {
+				return fmt.Errorf("error al obtener la configuración financiera de la universidad")
 			}
 
-			getInstQuery := `SELECT user_id, amount, status FROM installments WHERE id = $1 FOR UPDATE`
+			// 1. Buscar la cuota y bloquearla (FOR UPDATE)
+			var installment struct {
+				UserID  string    `db:"user_id"`
+				Amount  float64   `db:"amount"`
+				Status  string    `db:"status"`
+				DueDate time.Time `db:"due_date"` // <-- Añadido para verificar vencimiento
+			}
+
+			// Añadimos due_date al SELECT
+			getInstQuery := `SELECT user_id, amount, status, due_date FROM installments WHERE id = $1 FOR UPDATE`
 			if err := tx.Get(&installment, getInstQuery, installmentID); err != nil {
 				return fmt.Errorf("cuota no encontrada")
 			}
@@ -108,6 +134,24 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 			if installment.Status == "PAID" {
 				return fmt.Errorf("esta cuota ya fue pagada")
 			}
+
+			// --- CÁLCULO DE MORA MATEMÁTICO ---
+			totalToPay := installment.Amount
+			now := time.Now()
+			var penalty float64 = 0
+
+			if now.After(installment.DueDate) {
+				// Calculamos los días de retraso (redondeando hacia arriba a favor de la institución)
+				duration := now.Sub(installment.DueDate)
+				daysDelay := int(math.Ceil(duration.Hours() / 24.0))
+
+				if daysDelay > 0 {
+					// Fórmula: Monto * (Tasa Diaria * Días de Retraso)
+					penalty = installment.Amount * (interestRate * float64(daysDelay))
+					totalToPay += penalty
+				}
+			}
+			// ----------------------------------
 
 			// 2. Buscar la billetera del usuario y bloquearla (FOR UPDATE)
 			var wallet struct {
@@ -120,14 +164,14 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 				return fmt.Errorf("billetera no encontrada")
 			}
 
-			// 3. Verificar si el estudiante tiene suficiente dinero
-			if wallet.Balance < installment.Amount {
-				return fmt.Errorf("fondos insuficientes en la billetera")
+			// 3. Verificar si el estudiante tiene suficiente dinero (Validamos contra el total con mora)
+			if wallet.Balance < totalToPay {
+				return fmt.Errorf("fondos insuficientes para cubrir la cuota y la mora. Se requieren: %.2f", totalToPay)
 			}
 
-			// 4. Descontar el dinero de la billetera
+			// 4. Descontar el dinero de la billetera (Monto base + Penalidad)
 			updateWalletQuery := `UPDATE wallets SET current_balance = current_balance - $1 WHERE id = $2`
-			if _, err := tx.Exec(updateWalletQuery, installment.Amount, wallet.ID); err != nil {
+			if _, err := tx.Exec(updateWalletQuery, totalToPay, wallet.ID); err != nil {
 				return err
 			}
 
@@ -139,14 +183,16 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 
 			// 6. Dejar el comprobante en el historial de transacciones
 			txLogQuery := `
-				INSERT INTO wallet_txs (wallet_id, tenant_id, tx_type, amount, reference)
-				VALUES ($1, $2, 'FEE', $3, $4)`
+                INSERT INTO wallet_txs (wallet_id, tenant_id, tx_type, amount, reference)
+                VALUES ($1, $2, 'FEE', $3, $4)`
 
-			// Hacemos la concatenación del texto directamente en Go
+			// Referencia dinámica y transparente para auditoría
 			reference := "Pago de cuota: " + installmentID
+			if penalty > 0 {
+				reference = fmt.Sprintf("Pago de cuota: %s (Incluye Mora: %.2f)", installmentID, penalty)
+			}
 
-			// Le pasamos la referencia ya armada como el parámetro $4
-			_, err := tx.Exec(txLogQuery, wallet.ID, tenantID, installment.Amount, reference)
+			_, err := tx.Exec(txLogQuery, wallet.ID, tenantID, totalToPay, reference)
 
 			return err
 		})
@@ -160,7 +206,7 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 		}
 
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
-			"message": "Pago procesado exitosamente. La cuota ha sido saldada.",
+			"message": "La cuota ha sido saldada y el registro actualizado.",
 		})
 	}
 }
@@ -399,7 +445,7 @@ func MercadoPagoWebhookHandler(db *sqlx.DB) fiber.Handler {
 		// LOG: Imprimimos en la terminal para ver qué nos mandó MP
 		fmt.Printf("🔔 [WEBHOOK MP] Recibido -> Topic/Type: %s | Payment ID: %s\n", topic, paymentID)
 
-		// REGLA DE ORO DE MERCADO PAGO: 
+		// REGLA DE ORO DE MERCADO PAGO:
 		// Siempre debemos responder HTTP 200 OK inmediatamente para que no reintente.
 		return c.SendStatus(fiber.StatusOK)
 	}

@@ -2,7 +2,7 @@ import { Navigate, Outlet } from "react-router";
 import { useAuthStore } from "../store/authStore";
 
 interface RoleRouteProps {
-  allowedRole: "ADMIN" | "STUDENT";
+  allowedRole: "STUDENT" | "ADMIN" | "SUPERADMIN";
 }
 
 export default function RoleRoute({ allowedRole }: RoleRouteProps) {
