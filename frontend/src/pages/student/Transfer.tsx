@@ -44,7 +44,7 @@ export default function Transfer() {
       sileo.error({
         title: "Transferencia rechazada",
         description:
-          error.response?.data?.error || "No se pudo realizar la transferencia",
+          (error.response?.data?.message || error.response?.data?.error) || "No se pudo realizar la transferencia",
       });
     } finally {
       setIsSending(false);

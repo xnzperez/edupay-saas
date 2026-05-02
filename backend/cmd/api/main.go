@@ -97,8 +97,8 @@ func main() {
 	api.Post("/store/buy", store.PurchaseHandler(db))
 
 	// 🎓 Módulo del Estudiante (Pagos de Cartera)
-	api.Get("/billing/my-installments", billing.GetMyInstallmentsHandler(db))
-	api.Post("/billing/installments/:id/pay", billing.PayInstallmentHandler(db))
+	api.Get("/users/me/installments", billing.GetMyInstallmentsHandler(db))
+	api.Post("/billing/installments/:id/payments", billing.PayInstallmentHandler(db))
 
 	// ==========================================
 	// 2. RUTAS DE ADMINISTRADOR (Solo Cajeros)
@@ -109,7 +109,7 @@ func main() {
 	api.Get("/admin/transactions", auth.RequireRole("ADMIN"), wallet.GetAdminTransactions(db))
 
 	// 💼 Módulo del Cajero (Facturación y Deudas)
-	api.Get("/billing/students/search", auth.RequireRole("ADMIN"), billing.SearchStudentsHandler(db))
+	api.Get("/billing/students", auth.RequireRole("ADMIN"), billing.SearchStudentsHandler(db))
 	api.Post("/billing/installments", auth.RequireRole("ADMIN"), billing.CreateInstallmentHandler(db))
 	// Ruta para obtener TODAS las deudas (Solo Cajeros/Admins)
 	api.Get("/billing/installments", auth.RequireRole("ADMIN"), billing.GetAllInstallmentsHandler(db))

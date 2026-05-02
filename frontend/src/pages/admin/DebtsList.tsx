@@ -17,7 +17,7 @@ export default function DebtsList() {
         sileo.error({
           title: "Error de conexión",
           description:
-            error.response?.data?.error ||
+            (error.response?.data?.message || error.response?.data?.error) ||
             "No se pudieron cargar las obligaciones financieras.",
         });
       } finally {

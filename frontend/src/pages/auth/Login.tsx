@@ -63,7 +63,7 @@ export default function Login() {
     } catch (error: any) {
       sileo.error({
         title: "Error de autenticación",
-        description: error.response?.data?.error || "Credenciales incorrectas",
+        description: (error.response?.data?.message || error.response?.data?.error) || "Credenciales incorrectas",
       });
     } finally {
       setIsLoading(false);

@@ -48,7 +48,7 @@ export default function Store() {
       sileo.error({
         title: "Transacción Fallida",
         description:
-          error.response?.data?.error ||
+          (error.response?.data?.message || error.response?.data?.error) ||
           "No se pudo procesar la compra del certificado.",
       });
     } finally {

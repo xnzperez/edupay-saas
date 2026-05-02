@@ -113,7 +113,7 @@ export default function Dashboard() {
       sileo.error({
         title: "Error en el Pago",
         description:
-          error.response?.data?.error ||
+          (error.response?.data?.message || error.response?.data?.error) ||
           "La transacción fue rechazada por el banco.",
       });
     } finally {
@@ -138,7 +138,7 @@ export default function Dashboard() {
       sileo.error({
         title: "Error de Pasarela",
         description:
-          error.response?.data?.error ||
+          (error.response?.data?.message || error.response?.data?.error) ||
           "No se pudo iniciar la conexión con PSE.",
       });
       setIsRedirecting(false);

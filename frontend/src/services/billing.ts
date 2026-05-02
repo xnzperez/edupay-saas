@@ -16,7 +16,7 @@ export const searchStudents = async (
   query: string,
 ): Promise<StudentSearchResult[]> => {
   const response = await api.get<StudentSearchResult[]>(
-    `/billing/students/search?q=${query}`,
+    `/billing/students?q=${query}`,
   );
   return response.data;
 };
@@ -53,7 +53,7 @@ export const getBillingStats = async (): Promise<BillingStatsDTO> => {
 // Función para obtener las cuotas del estudiante logueado
 export const getMyInstallments = async (): Promise<InstallmentsResponse> => {
   const response = await api.get<InstallmentsResponse>(
-    "/billing/my-installments",
+    "/users/me/installments",
   );
   return response.data;
 };
@@ -63,7 +63,7 @@ export const payInstallment = async (
   installmentId: string,
 ): Promise<{ message: string }> => {
   const response = await api.post<{ message: string }>(
-    `/billing/installments/${installmentId}/pay`,
+    `/billing/installments/${installmentId}/payments`,
   );
   return response.data;
 };

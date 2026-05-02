@@ -69,13 +69,19 @@ func CreateInstallmentHandler(db *sqlx.DB) fiber.Handler {
 
 		var req CreateInstallmentReq
 		if err := c.BodyParser(&req); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "JSON inválido"})
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error":   "ValidationError",
+				"message": "JSON inválido",
+			})
 		}
 
 		// --- 1. VALIDACIÓN DE FECHA ESTRICTA (UTC) ---
 		dueDate, err := time.Parse("2006-01-02", req.DueDate)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Formato de fecha inválido. Debe ser YYYY-MM-DD"})
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error":   "ValidationError",
+				"message": "Formato de fecha inválido. Debe ser YYYY-MM-DD",
+			})
 		}
 
 		// Normalizamos ambas fechas a UTC y cortamos las horas/minutos
@@ -84,7 +90,8 @@ func CreateInstallmentHandler(db *sqlx.DB) fiber.Handler {
 
 		if dueDateUTC.Before(today) {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Operación rechazada. No puedes crear una deuda con fecha de vencimiento en el pasado.",
+				"error":   "BusinessLogicError",
+				"message": "Operación rechazada. No puedes crear una deuda con fecha de vencimiento en el pasado.",
 			})
 		}
 
@@ -101,7 +108,8 @@ func CreateInstallmentHandler(db *sqlx.DB) fiber.Handler {
 
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error":   "No se pudo crear la cuota",
+				"error":   "InternalError",
+				"message": "No se pudo crear la cuota",
 				"details": err.Error(),
 			})
 		}
@@ -234,17 +242,19 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 			// Evaluamos si el error proviene por agotamiento de límite de tiempo del contexto
 			if ctx.Err() != nil {
 				return c.Status(fiber.StatusRequestTimeout).JSON(fiber.Map{
-					"error":   "La transacción tomó demasiado tiempo y fue cancelada",
+					"error":   "TimeoutError",
+					"message": "La transacción tomó demasiado tiempo y fue cancelada",
 					"details": ctx.Err().Error(),
 				})
 			}
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error":   "El pago fue rechazado",
+				"error":   "PaymentError",
+				"message": "El pago fue rechazado",
 				"details": err.Error(),
 			})
 		}
 
-		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 			"message": "La cuota ha sido saldada y el registro actualizado.",
 		})
 	}
@@ -261,7 +271,8 @@ func SearchStudentsHandler(db *sqlx.DB) fiber.Handler {
 		searchQuery := c.Query("q")
 		if searchQuery == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Debes proporcionar un término de búsqueda",
+				"error":   "ValidationError",
+				"message": "Debes proporcionar un término de búsqueda",
 			})
 		}
 
@@ -287,7 +298,8 @@ func SearchStudentsHandler(db *sqlx.DB) fiber.Handler {
 
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error":   "Error interno al buscar en la base de datos",
+				"error":   "InternalError",
+				"message": "Error interno al buscar en la base de datos",
 				"details": err.Error(),
 			})
 		}
@@ -305,12 +317,14 @@ func GetMyInstallmentsHandler(db *sqlx.DB) fiber.Handler {
 
 		if userIDRaw == nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Acceso denegado: No se encontró el ID del usuario. ¿Falta el middleware de JWT?",
+				"error":   "UnauthorizedError",
+				"message": "Acceso denegado: No se encontró el ID del usuario. ¿Falta el middleware de JWT?",
 			})
 		}
 		if tenantIDRaw == nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Acceso denegado: No se encontró el Tenant ID.",
+				"error":   "UnauthorizedError",
+				"message": "Acceso denegado: No se encontró el Tenant ID.",
 			})
 		}
 
@@ -334,7 +348,8 @@ func GetMyInstallmentsHandler(db *sqlx.DB) fiber.Handler {
 
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error":   "No se pudieron cargar las cuotas",
+				"error":   "InternalError",
+				"message": "No se pudieron cargar las cuotas",
 				"details": err.Error(),
 			})
 		}
@@ -385,7 +400,8 @@ func DownloadReceiptHandler(db *sqlx.DB) fiber.Handler {
 		err := db.Get(&data, query, installmentID)
 		if err != nil {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"error": "Cuota no encontrada o error en base de datos",
+				"error":   "NotFoundError",
+				"message": "Cuota no encontrada o error en base de datos",
 			})
 		}
 
@@ -456,7 +472,10 @@ func DownloadReceiptHandler(db *sqlx.DB) fiber.Handler {
 		// Maroto devuelve (bytes.Buffer, error), no recibe argumentos.
 		buf, err := m.Output()
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error generando PDF"})
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error":   "InternalError",
+				"message": "Error generando PDF",
+			})
 		}
 
 		// 6. Enviar el binario del PDF al Frontend
@@ -532,7 +551,8 @@ func GetAllInstallmentsHandler(db *sqlx.DB) fiber.Handler {
 
 		if err := db.Select(&debts, query, tenantID); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Error al consultar las obligaciones financieras",
+				"error":   "InternalError",
+				"message": "Error al consultar las obligaciones financieras",
 			})
 		}
 
@@ -577,7 +597,8 @@ func GetBillingStatsHandler(db *sqlx.DB) fiber.Handler {
 
 		if err := db.Get(&stats, query, tenantID); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Error al procesar las métricas financieras",
+				"error":   "InternalError",
+				"message": "Error al procesar las métricas financieras",
 			})
 		}
 

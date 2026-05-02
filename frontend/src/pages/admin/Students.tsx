@@ -51,7 +51,7 @@ export default function Students() {
     } catch (error: any) {
       sileo.error({
         title: "Búsqueda fallida",
-        description: error.response?.data?.error || "Estudiante no encontrado.",
+        description: (error.response?.data?.message || error.response?.data?.error) || "Estudiante no encontrado.",
       });
     } finally {
       setIsSearching(false);
@@ -86,7 +86,7 @@ export default function Students() {
       sileo.error({
         title: "Error en el depósito",
         description:
-          error.response?.data?.error ||
+          (error.response?.data?.message || error.response?.data?.error) ||
           "Hubo un problema al procesar la recarga.",
       });
     } finally {

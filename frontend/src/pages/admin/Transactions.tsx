@@ -21,7 +21,7 @@ export default function Transactions() {
       sileo.error({
         title: "Error de Auditoría",
         description:
-          error.response?.data?.error ||
+          (error.response?.data?.message || error.response?.data?.error) ||
           "No se pudo cargar el historial de transacciones globales.",
       });
     } finally {

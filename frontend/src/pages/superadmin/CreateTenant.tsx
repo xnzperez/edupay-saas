@@ -43,7 +43,7 @@ export default function CreateTenant() {
       setFeedback({
         type: "error",
         message:
-          error.response?.data?.error ||
+          (error.response?.data?.message || error.response?.data?.error) ||
           "Error de red o servidor no disponible",
       });
     }
