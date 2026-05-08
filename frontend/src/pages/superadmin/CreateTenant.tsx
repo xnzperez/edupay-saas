@@ -6,6 +6,7 @@ import {
   type CreateTenantFormData,
 } from "../../validations/tenant";
 import { tenantService } from "../../services/tenant";
+import { useNotificationStore } from "../../store/notificationStore";
 
 export default function CreateTenant() {
   const [feedback, setFeedback] = useState<{
@@ -30,6 +31,8 @@ export default function CreateTenant() {
     },
   });
 
+  const addNotification = useNotificationStore((s) => s.addNotification);
+
   const onSubmit = async (data: CreateTenantFormData) => {
     setFeedback({ type: null, message: "" });
     try {
@@ -43,11 +46,18 @@ export default function CreateTenant() {
       setFeedback({
         type: "error",
         message:
-          (error.response?.data?.message || error.response?.data?.error) ||
+          error.response?.data?.message ||
+          error.response?.data?.error ||
           "Error de red o servidor no disponible",
       });
     }
   };
+
+  addNotification(
+    "Nueva Universidad",
+    `Se ha registrado correctamente la ${formData.name} en el sistema.`,
+    "success",
+  );
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md mt-10">

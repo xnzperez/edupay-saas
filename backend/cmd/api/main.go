@@ -108,6 +108,10 @@ func main() {
 	api.Post("/wallets/:user_id/deposit", auth.RequireRole("ADMIN"), wallet.DepositHandler(db, validate))
 	api.Get("/admin/transactions", auth.RequireRole("ADMIN"), wallet.GetAdminTransactions(db))
 
+	// 🔒 Ruta protegida para SuperAdmin
+	api.Get("/tenants", auth.RequireRole("SUPERADMIN"), tenant.GetTenantsHandler(db))
+	api.Patch("/tenants/:id/status", auth.RequireRole("SUPERADMIN"), tenant.UpdateTenantStatusHandler(db))
+
 	// 💼 Módulo del Cajero (Facturación y Deudas)
 	api.Get("/billing/students", auth.RequireRole("ADMIN"), billing.SearchStudentsHandler(db))
 	api.Post("/billing/installments", auth.RequireRole("ADMIN"), billing.CreateInstallmentHandler(db))

@@ -17,9 +17,10 @@ import StudentsList from "./pages/admin/Students";
 import BillingList from "./pages/admin/Billing";
 import Transactions from "./pages/admin/Transactions";
 
-// Importamos las vistas del Dueño del SaaS
+// Import SaaS Owner views
 import SuperAdminLayout from "./components/layouts/SuperAdminLayout";
 import CreateTenant from "./pages/superadmin/CreateTenant";
+import TenantsList from "./pages/superadmin/TenantsList";
 
 export default function App() {
   return (
@@ -30,9 +31,9 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
 
-        {/* 1. Guardia de Puerta Principal (Asegura que exista un JWT válido) */}
+        {/* 1. Main Gatekeeper (Ensures a valid JWT exists) */}
         <Route element={<ProtectedRoute />}>
-          {/* 2A. Guardia de Estudiantes */}
+          {/* 2A. Student Gatekeeper */}
           <Route element={<RoleRoute allowedRole="STUDENT" />}>
             <Route path="/student" element={<StudentLayout />}>
               <Route index element={<Dashboard />} />
@@ -41,7 +42,7 @@ export default function App() {
             </Route>
           </Route>
 
-          {/* 2B. Guardia de Cajeros (Administradores de Universidad) */}
+          {/* 2B. Cashier Gatekeeper (University Administrators) */}
           <Route element={<RoleRoute allowedRole="ADMIN" />}>
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
@@ -52,11 +53,12 @@ export default function App() {
             </Route>
           </Route>
 
-          {/* 2C. Guardia del Dueño del SaaS (Super Administrador) */}
+          {/* 2C. SaaS Owner Gatekeeper (Super Admin) */}
           <Route element={<RoleRoute allowedRole="SUPERADMIN" />}>
             <Route path="/superadmin" element={<SuperAdminLayout />}>
-              {/* El index redirige al formulario por defecto */}
-              <Route index element={<Navigate to="create-tenant" replace />} />
+              {/* Redirigimos por defecto a la lista de universidades */}
+              <Route index element={<Navigate to="tenants" replace />} />
+              <Route path="tenants" element={<TenantsList />} />
               <Route path="create-tenant" element={<CreateTenant />} />
             </Route>
           </Route>

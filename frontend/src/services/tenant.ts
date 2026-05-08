@@ -1,5 +1,6 @@
 import axios from "axios";
 import type { CreateTenantFormData } from "../validations/tenant";
+import { api } from "./api";
 
 export interface CreateTenantResponse {
   message: string;
@@ -23,4 +24,24 @@ export const tenantService = {
     );
     return response.data;
   },
+};
+
+export interface Tenant {
+  id: string;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export const getTenants = async (): Promise<Tenant[]> => {
+  const response = await api.get("/tenants"); // Asegúrate de que la ruta coincida con tu main.go
+  return response.data.data; // Retornamos el array que viene dentro de "data"
+};
+
+// NUEVA FUNCIÓN: Para suspender/activar la universidad
+export const updateTenantStatus = async (
+  id: string,
+  isActive: boolean,
+): Promise<void> => {
+  await api.patch(`/tenants/${id}/status`, { is_active: isActive });
 };

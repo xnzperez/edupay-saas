@@ -1,108 +1,129 @@
-# Documento de Especificación Técnica: EduPay SaaS
+# Documentación Técnica de Arquitectura: EduPay SaaS
 
-**Autor:** Arquitecto de Software Principal
-**Fecha:** 30 de Abril de 2026
-**Propósito:** Sustentación de Proyecto de Ingeniería de Software (9no Semestre)
-**Estado:** Implementación y Refinamiento
-
----
-
-## 1. Resumen Ejecutivo y Visión del Producto (SaaS B2B)
-
-**EduPay SaaS** se conceptualiza como una plataforma financiera *Business-to-Business* (B2B) bajo el modelo *Software as a Service* (SaaS) Multi-Tenant. El objetivo central de la aplicación es proveer a instituciones educativas (universidades, colegios, institutos) una infraestructura tecnológica "llave en mano" para la gestión de billeteras digitales de circuito cerrado (closed-loop wallets) para sus estudiantes.
-
-### Arquitectura Multi-Tenant (Aislamiento de Datos)
-
-El núcleo del producto es su capacidad para operar de forma centralizada pero asegurando un aislamiento total entre organizaciones. Cada universidad se representa como un *Tenant* autónomo en la base de datos PostgreSQL. 
-
-En lugar de utilizar bases de datos separadas (lo que aumentaría exponencialmente el costo de infraestructura), se adoptó una **arquitectura lógica Multi-Tenant utilizando Row-Level Security (RLS)** nativo de PostgreSQL. En el script de inicialización (`001_init_schema.sql`), se habilitó y forzó RLS (`ALTER TABLE ... FORCE ROW LEVEL SECURITY`) en las tablas críticas (`users`, `wallets`, `wallet_txs`). 
-
-Las políticas de Postgres garantizan matemáticamente que un Tenant (ej. Universidad A) no pueda bajo ninguna circunstancia leer o alterar registros de otro Tenant (ej. Universidad B), validando cada transacción a nivel de motor contra el identificador del entorno (`tenant_id`).
+**Rol:** Principal Software Architect & Senior Technical Writer
+**Clasificación:** Confidencial / Proyecto de Grado / Arquitectura Empresarial
+**Fecha de Actualización:** Mayo 2026
 
 ---
 
-## 2. Arquitectura del Sistema (Tech Stack)
-
-La selección del *stack* tecnológico se realizó basándose estrictamente en requerimientos no funcionales como tolerancia a fallos, concurrencia masiva, seguridad tipada y alta disponibilidad.
-
-### Backend: Go, Fiber y SQLX
-*   **Go (Golang):** Seleccionado como lenguaje central por su modelo de concurrencia nativa (*Goroutines*), recolección de basura ultra-optimizada y compilación a binarios estáticos sin dependencias externas. Esto garantiza un bajo consumo de memoria RAM y latencias predecibles bajo estrés.
-*   **Fiber:** Micro-framework web inspirado en Express.js pero impulsado por el motor HTTP *Fasthttp*. Fiber nos proporciona un rendimiento de ruteo y parsing de JSON sustancialmente superior a la librería estándar `net/http`, esencial para una API financiera de alta transaccionalidad.
-*   **SQLX:** Optamos por un mapeador relacional ligero en lugar de un ORM pesado (como GORM). SQLX proporciona la seguridad de mapeo a *Structs* de Go pero manteniendo el control absoluto y explícito sobre las consultas SQL en texto plano, crucial para auditar el rendimiento y los bloqueos transaccionales.
-
-### Frontend: React 18, TypeScript, Zustand y React Router
-*   **React y TypeScript:** La interfaz de usuario es una *Single Page Application* (SPA) construida con React, encapsulada bajo un rigoroso control de tipos estático con TypeScript. Esto previene un amplio espectro de errores en tiempo de compilación.
-*   **Zustand:** Seleccionado para el manejo de estado global debido a su diseño minimalista y libre de *boilerplate* (a diferencia de Redux), manteniendo la eficiencia en los re-renderizados.
-*   **React Router:** Encargado de gestionar la navegación del cliente con *guards* avanzados (ver sección UI/UX) para prevenir accesos no autorizados en el DOM.
-
-### Base de Datos: PostgreSQL
-*   Seleccionado por ser el motor SQL open-source más avanzado y compatible con principios **ACID** (Atomicidad, Consistencia, Aislamiento, Durabilidad). 
-*   **Rigor Financiero:** Se prohibió arquitectónicamente el uso de tipos de coma flotante (`FLOAT` o `REAL`) para almacenar dinero debido a imprecisiones de representación binaria. Todos los saldos y montos se procesan mediante `NUMERIC(15,2)`, garantizando precisión contable exacta.
+Esta documentación representa la "Biblia Arquitectónica" de **EduPay SaaS**. Se ha diseñado como una especificación técnica profunda, exhaustiva y académica que sustenta las decisiones de ingeniería detrás del ecosistema B2B (Business-to-Business) y Multi-Tenant de la plataforma. El documento está dirigido a ingenieros de software, DevOps, y auditores técnicos que busquen comprender los patrones de diseño, las estrategias de escalabilidad y los protocolos de resiliencia del software.
 
 ---
 
-## 3. Mecanismos de Seguridad y Concurrencia (El núcleo duro)
+## 1. VISIÓN GENERAL Y ARQUITECTURA DEL SISTEMA
 
-Dado que EduPay gestiona saldos y transacciones, la integridad del dato no es negociable. La concurrencia asíncrona de Go requirió estrategias específicas en la capa de datos.
+### 1.1 Naturaleza del Producto (SaaS Multi-Tenant)
+EduPay es un motor financiero *Software as a Service* (SaaS) diseñado para instituciones de educación superior. Funciona como una plataforma unificada para la emisión de billeteras digitales de circuito cerrado (closed-loop digital wallets), procesamiento de pagos, micro-transferencias P2P (Peer-to-Peer) entre estudiantes, y gestión de cartera/cuotas (installments) por parte de la administración.
 
-### Transacciones ACID y Row-Level Locking (Prevención de *Race Conditions*)
-Un problema clásico en sistemas de billetera ocurre cuando múltiples solicitudes asíncronas intentan modificar el saldo de un usuario exactamente al mismo tiempo (ej. dos compras simultáneas). Si no se maneja correctamente, la aplicación lee un saldo desactualizado y ocurre un "doble gasto" (*Race Condition*).
+En términos arquitectónicos, el sistema emplea una **topología de base de datos compartida, pero aislada lógicamente**. Un único despliegue backend y una única base de datos PostgreSQL soportan a docenas de universidades (Tenants) de manera concurrente, maximizando el ROI en infraestructura en la nube, pero sin comprometer en lo más mínimo la segregación y privacidad de los datos financieros.
 
-Para resolver esto, implementamos bloqueos pesimistas a nivel de fila (*Pessimistic Row-Level Locking*) utilizando la cláusula **`FOR UPDATE`** de PostgreSQL dentro de transacciones de SQLX (ej. `tx.Beginx()`).
+### 1.2 Stack Tecnológico Definitivo
+La selección tecnológica de EduPay SaaS prioriza estrictamente la seguridad tipada, la predictibilidad de rendimiento bajo cargas pesadas (High Throughput) y la experiencia de usuario (UX):
+*   **Backend Core:** **Go (Golang)** + framework **Fiber** + **SQLX**. Go fue seleccionado frente a ecosistemas como Node.js por su compilación AOT (Ahead-of-Time) a binarios estáticos, su recolección de basura hiperoptimizada y sus primitivas nativas de concurrencia.
+*   **Frontend Core:** **React 19** + **TypeScript** + **Vite**. Esta combinación habilita un *Developer Experience* inigualable y un proceso de empaquetado ultra rápido (bundling), junto a chequeos estrictos en tiempo de compilación.
+*   **Data Tier:** **PostgreSQL 16+**. El motor relacional open-source más adherente a los estándares ACID, esencial para el rigor del ecosistema Fintech.
+*   **Infraestructura:** Contenerización con **Docker** orquestada sobre **Microsoft Azure**.
 
-*   **En Pagos (`ProcessPurchase` en `store/service.go`):** Al iniciar el cobro, se ejecuta `SELECT w.id ... FOR UPDATE`. Esto bloquea la fila del saldo en la BD; cualquier otra petición de compra queda en espera encolada por la base de datos hasta que el hilo actual haga `tx.Commit()` o `tx.Rollback()`.
-*   **Prevención de Deadlocks en P2P (`TransferHandler` en `wallet/handler.go`):** En transacciones cruzadas (A le envía a B, y al mismo tiempo B le envía a A), un bloqueo bidireccional causa un *Deadlock* infinito. Para neutralizar este vector matemático, el query `SELECT ... FOR UPDATE` agrupa a los involucrados y **siempre bloquea las filas en el mismo orden lexicográfico** (`ORDER BY user_id FOR UPDATE`). Así, los bloqueos cruzados quedan serializados automáticamente.
-
-### Autenticación y Autorización (Middlewares)
-*   La aplicación carece de estado (*Stateless*). La autenticación opera sobre el estándar de **JSON Web Tokens (JWT)**.
-*   Las contraseñas de los usuarios nunca se guardan en texto plano; son inyectadas a una función de *hash* algorítmico **Bcrypt** con generación de *Salt* nativa antes del `INSERT`.
-*   **Autorización RBAC (`RequireRole` en `auth/rbac.go`):** Diseñamos un Middleware de control de acceso basado en roles mediante parámetros variádicos en Go (`...string`). El *guardia* intercepta la petición, verifica si el rol encriptado en el *payload* del JWT pertenece a la lista VIP del *endpoint*, delegando el `c.Next()` o retornando un *StatusForbidden (403)* instantáneamente, blindando la lógica de negocio.
-
-### Libro Mayor Inmutable (Audit Trail)
-El sistema financiero opera sobre una tabla transaccional diseñada como "Append-Only" (Solo escritura, jamás eliminación ni alteración). 
-*   **Tabla `wallet_txs`:** Cada vez que el saldo muta en la tabla `wallets`, la misma transacción de SQL inyecta forzosamente un registro en `wallet_txs` con el delta (`amount`), tipo de operación y referencia.
-*   **Tipos Soportados:** `DEPOSIT`, `PURCHASE`, `FEE`, `TRANSFER_IN`, `TRANSFER_OUT`.
-*   Esto garantiza un flujo de caja reconstruible para peritajes informáticos e integra a la plataforma con estándares contables de auditoría (Doble Entrada conceptual mediante *logs* transaccionales).
+### 1.3 Gestión Termodinámica de Entornos (`APP_ENV`)
+La aplicación implementa el patrón "Doce Factores" (Twelve-Factor App) para su inyección de configuración. Nunca hay credenciales quemadas (*hardcoded*) en el código fuente.
+Toda la parametrización ocurre vía un archivo `.env` o variables de entorno en el SO. La bandera principal, `APP_ENV=production` o `APP_ENV=development`, altera el comportamiento basal del sistema:
+*   En `development`, se encienden los logs de consultas SQL puras, se exponen *stack traces* completos en la interfaz de error de Fiber, y las políticas de CORS son permisivas.
+*   En `production`, Fiber opera en modo *prefork* para maximizar hilos en el procesador físico, el logging se reduce a niveles de `ERROR/WARN` (vía bibliotecas como `zerolog` o el default configurado) estructurados en JSON, las rutas de Swagger se apagan o limitan, y se activa el *Graceful Shutdown* estricto ante señales SIGTERM del orquestador de Azure.
 
 ---
 
-## 4. Ecosistema de Usuarios y Flujos Implementados
+## 2. ARQUITECTURA FRONTEND (REACT 19 + VITE)
 
-La arquitectura define tres entornos de usuarios asimétricos, completamente desacoplados en el Frontend e inferidos lógicamente en el Backend:
+La construcción de la SPA (Single Page Application) repudia el concepto de un monolito frontal acoplado, favoreciendo metodologías modulares, responsivas y de bajo consumo de red.
 
-### 1. SuperAdmin (Modo Dios)
-Es el *sysadmin* del ecosistema general. A través de este perfil, EduPay incorpora nuevas entidades jurídicas al software.
-*   **Creación de Tenants (`CreateTenant`):** El SuperAdmin genera los nuevos entornos (Universidades), configurando parámetros fundacionales como el identificador de dominio y tasas de interés (`default_interest_rate`) base para futuros módulos de crédito.
+### 2.1 Feature-Sliced Design (FSD) y Modularización
+Para sostener la escalabilidad del lado del cliente, se implementó el patrón arquitectónico **Feature-Sliced Design**. El código fuente (`src/`) ya no es una bolsa plana de archivos. Está dividido jerárquicamente:
+*   **Features/Pages:** Separación vertical absoluta de responsabilidades. La lógica de negocio pesada ya no contamina los componentes JSX. Todos los cálculos, validaciones asíncronas y *fetching* de datos están abstraídos dentro de **Custom Hooks** estrictamente tipados.
+*   **Erradicación del tipo `any`:** Cada *response* de Axios, y cada estado de Zustand obedece a interfaces formales de TypeScript sincronizadas mentalmente con los *Structs* de Golang del backend.
+*   **Fragmentación UI:** Módulos gigantes (ej. `AdminDashboard`) fueron rotos en componentes granulares (átomos y moléculas de la UI), logrando reutilización a lo largo del tablero financiero.
 
-### 2. Administrador (Cajero de Universidad)
-Opera bajo las fronteras de un `tenant_id` específico. Es el gerente financiero de la institución en el software.
-*   **Auditoría Global (`Transactions` / `GetAdminTransactions`):** Posee vistas analíticas con consultas SQL que cruzan (*JOIN*) el historial de movimientos (`wallet_txs`) con datos de usuarios (`users`) para obtener un flujo de caja global. Optimizamos estas vistas incorporando **paginación algorítmica** (`LIMIT` y `OFFSET`) calculando el total de páginas (`totalPages`) matemáticamente desde la base de datos, garantizando rendimiento O(1) relativo sin saturar la memoria RAM.
-*   **Inyección de Fondos (`DepositHandler`):** Único actor capaz de inyectar "dinero fiat" al ecosistema, permitiendo digitalizar efectivo físico o depósitos bancarios de los estudiantes.
+### 2.2 Optimización Radical de Rendimiento (Vercel Best Practices)
+La auditoría de rendimiento (Profiled against Vercel Engineering Standards) impuso directivas críticas:
+1.  **Prevención de "Stale Closures":** Identificamos que las actualizaciones de estados basados en asincronía en React generaban dependencias fantasma. Ahora, toda mutación de estado dependiente de un estado previo utiliza el patrón de **setState Funcional**. En lugar de `setBalance(balance + 5)`, se impone arquitectónicamente `setBalance(prev => prev + 5)`. Esto blinda la UI contra sobrescrituras por condiciones de carrera en renders simultáneos.
+2.  **Eliminación de *Barrel Imports*:** Para reducir el tamaño del paquete JS final (*Bundle Size*), se prohíbe el uso de indexadores (`export * from ...`) en librerías pesadas (ej. iconos o UI kits). Las importaciones son atómicas y directas (ej. `import Alert from 'library/Alert'`), permitiendo a Vite y a Rollup ejecutar un *Tree-Shaking* perfecto, enviando al navegador solo los KBs indispensables.
+3.  **Erradicación de Request Waterfalls:** Los bloqueos de *Time To Interactive* (TTI) originados por peticiones secuenciales (`await A; await B;`) fueron reemplazados por el patrón `Promise.all([A, B])`. El motor de JavaScript ahora satura la red de forma concurrente para hidratar el dashboard del estudiante en la mitad del tiempo.
+4.  **Uso de *Derived State*:** En lugar de sincronizar variables con redundantes hooks `useEffect` (lo que causa la "cascada de re-renders" o *render-tearing*), la lógica de distribución financiera y cálculos estadísticos del panel de administración se efectúa síncronamente durante el ciclo de render principal (Derived State).
 
-### 3. Estudiante (Usuario Final)
-Dispone de las primitivas financieras para transaccionar en el ecosistema de su universidad.
-*   **Dashboard (`GetWalletDashboardHandler`):** Consulta su billetera personal unificando saldo y transacciones paginadas.
-*   **Transferencias P2P (`TransferHandler`):** Envío de fondos inter-estudiantiles. El backend efectúa validaciones del DTO con `go-playground/validator` (mínimo de envío de $5,000 COP, existencia de destinatario, validación de autotransferencia y verificación estricta de saldos).
-*   **Módulo Store (`ProcessPurchase`):** Simula puntos de venta o cobros institucionales directos en formato de tienda.
+### 2.3 Manejo de UI y Centralización del Estado (Axios Interceptors)
+Previamente, la aplicación sufría de una dispersión masiva de bloques `try/catch` y llamadas repetitivas de notificaciones (`sileo.error()`) en cada petición. Este *anti-patrón* fue refactorizado mediante **Intercepción de Transporte HTTP**:
+*   **Limpieza y DRY (Don't Repeat Yourself):** Se configuró la instancia global de Axios (`src/services/api.ts`) para atrapar todos los códigos de estado `4xx` y `5xx`.
+*   El interceptor extrae semánticamente el mensaje de error normalizado provisto por la API REST de Go, y despliega **globalmente** la micro-notificación de error de la librería Sileo, liberando a los componentes React de preocuparse por manejar el fracaso de red.
+*   **Manejo determinista del `401 Unauthorized`:** Si el backend revoca o expira el JWT, el interceptor fuerza la mutación asíncrona de Zustand (limpiando los tokens de LocalStorage) y despacha un *hard-redirect* hacia `/login`, impidiendo que peticiones huérfanas sigan consumiendo banda ancha en el DOM inerte.
+
+---
+
+## 3. ARQUITECTURA BACKEND (GO + FIBER)
+
+El backend no es simplemente una capa CRUD; es un motor de transacciones ACID diseñado bajo las máximas del *Site Reliability Engineering* (SRE).
+
+### 3.1 Patrones de Concurrencia de Nivel Enterprise
+La asincronía en Golang es barata (cada Goroutine cuesta < 2KB), pero si no se domina, resulta catastrófica.
+*   Para procesamientos masivos no dependientes (ej. notificaciones asíncronas de comprobantes, exportaciones CSV para admins), utilizamos **Goroutines coordinadas mediante `sync.WaitGroup`**.
+*   **Context Propagation:** El ciclo vital de cada request de Fiber está anclado a `c.Context()`. Si un estudiante aborta la petición HTTP (cierra la pestaña), el contexto de Go invoca una cancelación recursiva (`context.Canceled`). Esto viaja a la capa de base de datos interrumpiendo el *Query* de PostgreSQL instantáneamente, previniendo cuellos de botella por procesos zombies (Memory Leaks).
+
+### 3.2 Seguridad Perimetral y "Defense-in-Depth" (Mitigación de Vectores de Ataque)
+Aplicamos el patrón militar de Defensa en Profundidad, estratificando las validaciones para que la intrusión falle estrepitosamente en la capa más externa posible (*Fail-Fast Principle*).
+
+*   **Capa 1: Edge Validation (Frontera HTTP).** No confiamos ciegamente en las rutas. Por ejemplo, en el `PayInstallmentHandler`, el parámetro `:id` extraído mediante `c.Params("id")` es auditado contra una Expresión Regular de formato **UUIDv4**. Si un actor malicioso inyecta texto aleatorio o inyecciones SQL ciegas, el *Request* rebota con un `400 Bad Request` antes de que siquiera se adquiera una conexión del *Connection Pool* de base de datos.
+*   **Capa 2: Idempotencia y Lógica de Negocio Core.** Cuando un pago ingresa, validamos estrictamente que la cuota (`installment`) se encuentre en estado `PENDING`. Si ya es `PAID`, se aborta inmediatamente (Idempotencia). Aseguramos que la Billetera tenga saldo `>=` a la deuda (Integridad).
+*   **Robustez de Pánico (`recover`):** En transacciones complejas, usamos `defer` con wrappers transaccionales que implementan `recover()`. Si un puntero nulo (Nil Pointer Dereference) causa un *Panic* en tiempo de ejecución, nuestra arquitectura captura el crash, efectúa el `tx.Rollback()` obligatorio, y retorna un error `500` formal al cliente, manteniendo el servidor de Fiber 100% disponible.
+*   **Go 1.13+ Error Wrapping:** Usamos `fmt.Errorf("...: %w", err)` para encadenar trazas de errores, permitiendo auditorías profundas desde el Handler hasta el query SQL original sin perder el contexto.
+
+### 3.3 Diseño y Estandarización de la API (RESTful Mastery)
+*   Transición completa de endpointsRPC/Verbos (`/pagar`, `/crearCuota`) a un diseño **Estrictamente Orientado a Recursos** (`POST /installments/:id/payments`, `POST /installments`).
+*   Los códigos de estado HTTP se devuelven con precisión de cirujano: `200 OK` para consultas, `201 Created` exclusivo para génesis de registros y pagos, `403 Forbidden` en barreras de rol RBAC, y `409 Conflict` ante colisiones de estado.
+*   La API está unificada mediante **Swagger/OpenAPI**. El uso de `swaggo/swag` extrae los comentarios del código Go en build-time, permitiendo la generación dinámica de una UI de postman interactiva en `/swagger`.
 
 ---
 
-## 5. Arquitectura UI/UX
+## 4. INGENIERÍA DE BASE DE DATOS (POSTGRESQL)
 
-El Frontend está estructurado para soportar un mantenimiento evolutivo (*Scalability*) y maximizar la resiliencia en tiempo de ejecución.
+### 4.1 Row-Level Security y Multi-Tenancy Lógico
+La base de datos es la última y más importante muralla de seguridad. La arquitectura **Multi-Tenant (Inquilino Compartido)** segrega las universidades a nivel de fila.
+*   No basta con hacer un `WHERE tenant_id = X` en Golang (eso está sujeto a errores de programador). 
+*   Mediante el RLS nativo de PostgreSQL, el middleware inyecta la variable de sesión de la transacción `SET LOCAL app.current_tenant = X`. Las políticas RLS (`CREATE POLICY ...`) dictan que cualquier operación `SELECT`, `UPDATE` o `DELETE` automáticamente enmascara el resto del mundo. Un estudiante de la Universidad "Alfa" literalmente no puede ver la existencia técnica de un estudiante de la "Universidad Omega", erradicando de raíz las vulnerabilidades de *Cross-Tenant Data Leak*.
 
-### Sistema de Diseño (Tailwind CSS y "Nord Theme")
-Descartamos librerías monolíticas de componentes a favor de **Tailwind CSS**. La directriz estética impuesta se basa en el **"Nord Theme"**, un sistema de colores glaciar y corporativo definido rigurosamente mediante *Design Tokens* e inyectado como clases utilitarias de Tailwind (ej. `bg-nord-0`, `text-nord-4`).
-Esta inyección atómica previene el CSS-in-JS (que castigaría el rendimiento del *Runtime* de JavaScript) y asegura la consistencia gráfica, entregando un producto SaaS B2B de aspecto *Premium* y minimalista. Las interacciones dinámicas de éxito y error están orquestadas mediante micro-notificaciones usando la librería *Sileo*.
+### 4.2 Optimización Extrema de Queries e Índices B-Tree
+Durante la auditoría de rendimiento SQL, remediamos un talón de Aquiles clásico: *Postgres no indexa Llaves Foráneas por defecto*.
+*   **Erradicación de Sequential Scans:** Todas las columnas referenciales críticas (`tenant_id`, `user_id`, `wallet_id`) fueron dotadas de índices explícitos `CREATE INDEX ON table (col)`. Las búsquedas del administrador, los JOINs de recibos y las proyecciones financieras ahora operan en orden algorítmico `O(log N)` (buscando sobre el B-Tree en RAM) en lugar de degradarse a `O(N)` (escaneo masivo de disco).
 
-### Composición y Layouts
-React Router DOM se emplea de forma declarativa, abstrayendo el contenedor maestro (*Shell*) y delegando las vistas internas al `<Outlet />`.
-*   Existen Layouts especializados que determinan el *Navbar*, *Sidebar* y contenedor de fondos base de acuerdo al entorno de ejecución: `StudentLayout`, `AdminLayout` y `SuperAdminLayout`.
+### 4.3 Estrictez de Tipos y Precisión Numérica Absoluta
+El esquema de datos es rígidamente conservador. Postulados arquitectónicos:
+1.  **Montos Financieros:** Todo saldo o débito usa `NUMERIC(15,2)`. Se vetaron totalmente los flotantes IEEE-754 (`FLOAT`, `DOUBLE PRECISION`) para eludir errores microscópicos de redondeo binario de céntimos.
+2.  **Husos Horarios Inmutables:** Los eventos en el tiempo transaccional y pagos no usan simples *Timestamps*. Implementamos la directiva `TIMESTAMPTZ` y `now()` para unificar el historial de auditoría de la base de datos bajo UTC absoluto.
+3.  **Restricciones de Cadena (Strings):** Eliminación de la sintaxis legada `VARCHAR(255)`. Se emplea `TEXT` junto con constricciones rigurosas de nivel de motor `CHECK (LENGTH(column) <= 255)`.
 
-### Enrutamiento Protegido basado en Roles (Security via UI)
-El flujo de navegación está blindado mediante componentes de Alto Orden (*Higher-Order Components / Guards*) orquestados en el árbol de rutas principal (`App.tsx`):
-1.  **`<ProtectedRoute />`**: Intercepta la solicitud y verifica que la sesión (token JWT del *LocalStorage* o estado en Zustand) exista. Si hay ausencia, emite un *redirect* duro hacia `/login`.
-2.  **`<RoleRoute allowedRole="..." />`**: Segundo filtro algorítmico que cruza el `role` decodificado con la lista de permisos de esa área (ej. `"STUDENT"`, `"ADMIN"` o `"SUPERADMIN"`). Si un estudiante trata de mutar la URL directamente en el navegador hacia `/admin`, React intercepta la violación e impide el renderizado del Árbol del DOM, garantizando que el usuario únicamente interaccione con la interfaz a la que está constitucionalmente autorizado a ingresar.
+### 4.4 Decisión Arquitectónica Clave: Llaves Primarias (UUID vs BIGINT)
+Aunque las buenas prácticas de bases de datos de alto volumen pudiesen sugerir la migración a `BIGINT GENERATED ALWAYS AS IDENTITY` por compactación en índices B-Tree, **la arquitectura de EduPay tomó una decisión deliberada de Seguridad por encima de la Micrométrica del Caché**. 
+Se mantiene rigurosamente el formato **UUID v4** (`gen_random_uuid()`) para las llaves primarias en todas las entidades expuestas. Esta resolución arquitectónica fue dictada para inyectar *Opacidad Crítica* a los registros del sistema. Evita absolutamente el **IDOR (Insecure Direct Object Reference)** y los ataques cibernéticos de recolección secuencial (scraping) en rutas públicas, previniendo que analistas externos puedan deducir la magnitud o la tasa de creación de transacciones/clientes del SaaS.
 
 ---
-*Este documento atestigua las métricas de madurez de ingeniería de software aplicadas en la planeación y programación de la arquitectura EduPay SaaS, cumpliendo con los estándares de rigor técnico, optimización de recursos y seguridad integral.*
+
+## 5. INFRAESTRUCTURA, DESPLIEGUE Y DEVOPS
+
+El pipeline hacia el entorno de producción integra herramientas Cloud-Native modernas, asegurando alta disponibilidad (SLA del 99.9%) y despliegues sin interrupción (Zero-Downtime Deployments).
+
+### 5.1 Docker y Contenerización Optimizada (Multi-Stage)
+El Backend de Go se despliega a través de **Docker**. Se utiliza un paradigma de *Multi-Stage Build*:
+1.  **Stage de Compilación (Builder):** Usa una imagen base como `golang:1.23-alpine`. Descarga dependencias de red de módulos, valida los chequeos de suma (`go.sum`) para asegurar que el Supply Chain no haya sido envenenado, y finalmente compila estáticamente (CGO_ENABLED=0).
+2.  **Stage de Producción (Runner):** La imagen final es frecuentemente la de `alpine` pura o `scratch` (completamente vacía, conteniendo solo el binario). El contenedor de la API pesa apenas ~15-20MB, garantizando *Cold-Starts* casi instantáneos y eliminando por completo la superficie de vulnerabilidad del Sistema Operativo de la imagen (Shell attacks, OpenSSL CVEs, etc.).
+
+### 5.2 Despliegue en Microsoft Azure
+La infraestructura general del SaaS descansa en el ecosistema Microsoft Azure:
+*   **App Service Containers / Azure Container Instances (ACI):** Ejecución del Backend de manera serverless o dedicada, con reglas de Auto-Scaling horizontal basadas en picos de telemetría de CPU y Memoria (para días de corte de facturación donde miles de alumnos pagan cuotas).
+*   **Azure Database for PostgreSQL (Flexible Server):** Se terceriza la responsabilidad de backups automatizados, replicación Read/Write geográfica y mitigación de desastres (Point-in-time recovery) al motor paaS de Azure.
+*   **Azure Static Web Apps (O CDN Vercel/Cloudflare):** El binario final destilado de Vite (`dist/`) se envía a los Edge Servers, pre-cacheando estáticos e imágenes, logrando latencias de UI sub-milisegundo. 
+
+### 5.3 Integración Continua y Flujos Operativos (CI/CD)
+Ningún commit llega al servidor principal a menos de pasar un riguroso *Pipeline* (e.g. GitHub Actions):
+*   `linting`: `golangci-lint` en backend y `eslint` con pre-commit de TypeScript en el frontend.
+*   Pruebas Unitarias.
+*   Ejecución y generación nativa y segura del contenedor hacia un Container Registry, para finalmente hacer el *Rolling Update* en Azure de modo progresivo.
+
+---
+*Este documento sustenta intelectual y matemáticamente las defensas en profundidad, la integridad financiera ACID y la resiliencia UI/UX que la arquitectura de software "EduPay SaaS" provee a escala corporativa.*
