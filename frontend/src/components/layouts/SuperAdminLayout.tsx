@@ -6,7 +6,11 @@ import { useNotificationStore } from "../../store/notificationStore";
 export default function SuperAdminLayout() {
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
+  const user = useAuthStore((state) => state.user);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const MASTER_TENANT_ID = import.meta.env.VITE_MASTER_TENANT_ID;
+  const isMaster = user?.tenant_id === MASTER_TENANT_ID;
 
   // Store de Notificaciones
   const { notifications, markAsRead, clearNotifications } =
@@ -21,19 +25,34 @@ export default function SuperAdminLayout() {
     navigate("/login");
   };
 
-  // Menú de navegación real
-  const navItems = [
-    {
-      name: "Universidades (Inquilinos)",
-      path: "/superadmin/tenants",
-      exact: true,
-    },
-    {
-      name: "Nueva Universidad",
-      path: "/superadmin/create-tenant",
-      exact: true,
-    },
-  ];
+  // Menú de navegación dinámico según el tipo de administrador
+  const navItems = isMaster
+    ? [
+        // Menú exclusivo del Dueño del SaaS
+        {
+          name: "Universidades (Inquilinos)",
+          path: "/superadmin/tenants",
+          exact: true,
+        },
+        {
+          name: "Nueva Universidad",
+          path: "/superadmin/create-tenant",
+          exact: true,
+        },
+      ]
+    : [
+        // Menú exclusivo del Administrador Local (Cajero/UCC)
+        {
+          name: "Mi Universidad",
+          path: "/superadmin/my-tenant", // Crearemos esta vista luego
+          exact: true,
+        },
+        {
+          name: "Gestión de Cajeros",
+          path: "/superadmin/admins",
+          exact: true,
+        },
+      ];
 
   return (
     <div className="flex h-screen bg-nord-0 text-nord-6 font-sans overflow-hidden">
@@ -122,7 +141,7 @@ export default function SuperAdminLayout() {
               </svg>
             </button>
             <h2 className="text-base md:text-lg font-semibold text-nord-4 truncate">
-              Consola de Super Administrador
+              {isMaster ? "Consola Maestra SaaS" : "Panel de Administración"}
             </h2>
           </div>
 

@@ -51,9 +51,18 @@ func CreateTenantHandler(db *sqlx.DB) fiber.Handler {
 }
 
 // GetTenantsHandler devuelve la lista de todas las universidades (Tenants).
+// PROTEGIDO: SOLO el Master SuperAdmin puede ejecutar esto.
 func GetTenantsHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Estructura para mapear la respuesta de la base de datos (Ahora con IsActive)
+		// 1. Verificación de seguridad absoluta (Solo el Maestro pasa)
+		isMaster, ok := c.Locals("is_master").(bool)
+		if !ok || !isMaster {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "Acceso denegado. Solo el administrador maestro del SaaS puede ver todas las universidades.",
+			})
+		}
+
+		// 2. Estructura para mapear la respuesta de la base de datos
 		type TenantResponse struct {
 			ID        string `json:"id" db:"id"`
 			Name      string `json:"name" db:"name"`
@@ -63,7 +72,7 @@ func GetTenantsHandler(db *sqlx.DB) fiber.Handler {
 
 		var tenants []TenantResponse
 
-		// 2. Query que extrae los datos, incluyendo is_active
+		// 3. Query limpia (El Maestro tiene derecho a ver toda la tabla)
 		query := `
 			SELECT id, name, created_at, is_active 
 			FROM tenants 
@@ -78,12 +87,10 @@ func GetTenantsHandler(db *sqlx.DB) fiber.Handler {
 			})
 		}
 
-		// 3. Si no hay inquilinos, devolvemos un array vacío en lugar de null
 		if tenants == nil {
 			tenants = []TenantResponse{}
 		}
 
-		// 4. Retornamos el JSON al frontend
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"message": "Universidades obtenidas exitosamente",
 			"data":    tenants,
@@ -92,8 +99,17 @@ func GetTenantsHandler(db *sqlx.DB) fiber.Handler {
 }
 
 // UpdateTenantStatusHandler permite activar o suspender una universidad.
+// Solo el Maestro puede ejecutar esto.
 func UpdateTenantStatusHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		// 1. Verificación Maestro (Igual que en GetTenants)
+		isMaster, ok := c.Locals("is_master").(bool)
+		if !ok || !isMaster {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "Acceso denegado. Solo el administrador maestro puede modificar universidades.",
+			})
+		}
+
 		id := c.Params("id")
 
 		// Estructura para recibir el nuevo estado
@@ -126,5 +142,59 @@ func UpdateTenantStatusHandler(db *sqlx.DB) fiber.Handler {
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"message": "Universidad " + statusMsg + " correctamente",
 		})
+	}
+}
+
+// GetMyTenantHandler obtiene los datos de la universidad del usuario logueado.
+func GetMyTenantHandler(db *sqlx.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		tenantID := c.Locals("tenant_id").(string)
+
+		type MyTenantResponse struct {
+			ID                  string  `json:"id" db:"id"`
+			Name                string  `json:"name" db:"name"`
+			Domain              string  `json:"domain" db:"domain"`
+			DefaultInterestRate float64 `json:"default_interest_rate" db:"default_interest_rate"`
+			IsActive            bool    `json:"is_active" db:"is_active"`
+			CreatedAt           string  `json:"created_at" db:"created_at"`
+		}
+
+		var t MyTenantResponse
+		query := `SELECT id, name, domain, default_interest_rate, is_active, created_at 
+                  FROM tenants WHERE id = $1`
+
+		if err := db.Get(&t, query, tenantID); err != nil {
+			return c.Status(404).JSON(fiber.Map{"error": "Universidad no encontrada"})
+		}
+
+		return c.JSON(fiber.Map{"data": t})
+	}
+}
+
+// UpdateMyTenantHandler permite al SuperAdmin local editar su dominio y tasa de interés.
+func UpdateMyTenantHandler(db *sqlx.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		tenantID := c.Locals("tenant_id").(string)
+
+		type UpdateRequest struct {
+			Domain              string  `json:"domain"`
+			DefaultInterestRate float64 `json:"default_interest_rate"`
+		}
+
+		var req UpdateRequest
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Cuerpo de petición inválido"})
+		}
+
+		query := `UPDATE tenants 
+                  SET domain = $1, default_interest_rate = $2 
+                  WHERE id = $3`
+
+		_, err := db.Exec(query, req.Domain, req.DefaultInterestRate, tenantID)
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "No se pudo actualizar la configuración"})
+		}
+
+		return c.JSON(fiber.Map{"message": "Configuración de universidad actualizada"})
 	}
 }

@@ -29,15 +29,14 @@ func Protected() fiber.Handler {
 		}
 		tokenString := parts[1]
 
-		// 3. Obtener el secreto para desencriptar (el mismo que usamos en el login)
+		// 3. Obtener el secreto para desencriptar
 		secret := os.Getenv("JWT_SECRET")
 		if secret == "" {
 			secret = "fallback_secret_for_local_dev"
 		}
 
-		// 4. Parsear y validar la firma criptográfica del token
+		// 4. Parsear y validar la firma criptográfica
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			// Validar que el algoritmo de firma sea el correcto (HMAC) para evitar hackeos
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("método de firma inesperado: %v", token.Header["alg"])
 			}
@@ -52,26 +51,42 @@ func Protected() fiber.Handler {
 
 		// 5. Extraer los datos guardados dentro del token (Claims)
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			// CROSS-CHECK DE SEGURIDAD ABSOLUTA:
-			// Verificamos que el Tenant ID del token coincida con el Tenant ID de la URL/Header.
-			// Así evitamos que un estudiante de la UCC intente pagar algo en la UPB.
-			tokenTenantID := claims["tenant_id"].(string)
-			urlTenantID := c.Locals("tenant_id").(string)
 
-			if tokenTenantID != urlTenantID {
-				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-					"error": "ALERTA: El token no pertenece a esta Universidad",
-				})
+			// EXTRAEMOS EL ROL PRIMERO
+			userRole := claims["role"].(string)
+			tokenTenantID := claims["tenant_id"].(string)
+
+			// ID DEL MAESTRO (Idealmente cárgalo con os.Getenv("MASTER_TENANT_ID"))
+			masterTenantID := "88619ff3-06a0-4993-979b-99053fb5e0f6"
+
+			// CROSS-CHECK DE SEGURIDAD ABSOLUTA:
+			isMasterAdmin := userRole == "SUPERADMIN" && tokenTenantID == masterTenantID
+
+			if !isMasterAdmin {
+				// Si es un SuperAdmin local, Cajero o Estudiante, lo enjaulamos en su Tenant
+				var urlTenantID string
+				if val := c.Locals("tenant_id"); val != nil {
+					urlTenantID = val.(string)
+				}
+
+				if urlTenantID != "" && tokenTenantID != urlTenantID {
+					return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+						"error": "ALERTA: Acceso denegado. Intento de brecha de seguridad entre universidades.",
+					})
+				}
 			}
 
-			// Guardamos los datos en la memoria de Fiber para que los siguientes controladores los usen
+			// 6. Guardamos los datos en la memoria de Fiber
 			c.Locals("user_id", claims["sub"])
-			c.Locals("user_role", claims["role"])
+			c.Locals("user_role", userRole)
+			c.Locals("tenant_id", tokenTenantID)
+			c.Locals("is_master", isMasterAdmin) // Guardamos esta bandera para usarla en los handlers
+
 		} else {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Estructura del token corrupta"})
 		}
 
-		// 6. ¡Todo en orden! El guardia abre la puerta.
+		// 7. ¡Todo en orden! El guardia abre la puerta.
 		return c.Next()
 	}
 }

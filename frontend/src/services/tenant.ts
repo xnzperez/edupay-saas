@@ -45,3 +45,32 @@ export const updateTenantStatus = async (
 ): Promise<void> => {
   await api.patch(`/tenants/${id}/status`, { is_active: isActive });
 };
+
+// Interfaz para la respuesta de "Mi Universidad"
+export interface MyTenant {
+  id: string;
+  name: string;
+  domain: string;
+  default_interest_rate: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+// Interfaz para actualizar "Mi Universidad"
+export interface UpdateMyTenantData {
+  domain: string;
+  default_interest_rate: number;
+}
+
+// Obtener la información de la universidad del usuario logueado
+export const getMyTenantInfo = async (): Promise<MyTenant> => {
+  const response = await api.get("/superadmin/my-tenant");
+  return response.data.data;
+};
+
+// Actualizar la configuración de la universidad local
+export const updateMyTenant = async (
+  data: UpdateMyTenantData,
+): Promise<void> => {
+  await api.patch("/superadmin/my-tenant", data);
+};

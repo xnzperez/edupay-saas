@@ -37,10 +37,19 @@ export default function CreateTenant() {
     setFeedback({ type: null, message: "" });
     try {
       const response = await tenantService.createTenant(data);
+
       setFeedback({
         type: "success",
         message: `¡Universidad registrada! ID: ${response.tenant_id}`,
       });
+
+      // --- DISPARO DE NOTIFICACIÓN GLOBAL ---
+      addNotification(
+        "Nueva Universidad",
+        `Se ha registrado correctamente la institución ${data.name} en el sistema.`,
+        "success",
+      );
+
       reset(); // Limpiamos el formulario tras el éxito
     } catch (error: any) {
       setFeedback({
@@ -52,12 +61,6 @@ export default function CreateTenant() {
       });
     }
   };
-
-  addNotification(
-    "Nueva Universidad",
-    `Se ha registrado correctamente la ${formData.name} en el sistema.`,
-    "success",
-  );
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md mt-10">

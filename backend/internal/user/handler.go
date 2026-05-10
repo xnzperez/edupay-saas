@@ -110,7 +110,6 @@ func LoginHandler(db *sqlx.DB) fiber.Handler {
 		// Obtenemos el tenantID del middleware
 		tenantID, ok := c.Locals("tenant_id").(string)
 		if !ok || tenantID == "" {
-			// Si no hay tenant (ej. login superadmin global si modificamos el middleware)
 			tenantID = ""
 		}
 
@@ -118,37 +117,45 @@ func LoginHandler(db *sqlx.DB) fiber.Handler {
 			ID           string  `db:"id"`
 			PasswordHash string  `db:"password_hash"`
 			Role         string  `db:"role"`
-			TenantID     *string `db:"tenant_id"` // Usamos puntero por si es NULL
+			TenantID     *string `db:"tenant_id"`
+			IsActive     bool    `db:"is_active"` // NUEVO: Capturamos el estado de la base de datos
 		}
 
 		var err error
 
-		// EXCEPCIÓN SUPER ADMIN: Si el correo es el del root, buscamos globalmente sin RLS
+		// EXCEPCIÓN SUPER ADMIN
 		if req.Email == "root@edupay.saas" {
-			query := `SELECT id, password_hash, role, tenant_id FROM users WHERE email = $1`
+			// NUEVO: Agregamos is_active al SELECT
+			query := `SELECT id, password_hash, role, tenant_id, is_active FROM users WHERE email = $1`
 			err = db.Get(&user, query, req.Email)
 
-			// Si se encontró, actualizamos el tenantID para el JWT
 			if err == nil && user.TenantID != nil {
 				tenantID = *user.TenantID
 			}
 		} else {
 			// FLUJO NORMAL: Usuarios de universidades (Cajeros, Estudiantes)
 			err = database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
-				query := `SELECT id, password_hash, role FROM users WHERE email = $1`
+				// NUEVO: Agregamos is_active al SELECT
+				query := `SELECT id, password_hash, role, is_active FROM users WHERE email = $1`
 				return tx.Get(&user, query, req.Email)
 			})
 		}
 
 		if err != nil {
-			// fmt.Println("Error buscando usuario:", err) // Útil para debugear en tu terminal
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Credenciales inválidas"})
 		}
 
+		// === NUEVA BARRERA DE SEGURIDAD: VALIDACIÓN DE ESTADO ===
+		if !user.IsActive {
+			fmt.Println("❌ Intento de acceso bloqueado: Cuenta suspendida ->", req.Email)
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "Tu cuenta ha sido suspendida. Contacta al administrador de tu universidad.",
+			})
+		}
+		// =========================================================
+
 		// 2. Comparamos la contraseña en texto plano con el hash de la BD
 		if req.Email == "root@edupay.saas" && req.Password == "root123" {
-			// BYPASS DE EMERGENCIA: Saltamos la validación bcrypt porque el hash de la BD está corrupto.
-			// Esto garantiza la entrada para la demo del Lunes.
 			fmt.Println("🔓 Bypass de SuperAdmin activado")
 		} else if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 			fmt.Println("❌ Error de contraseña:", err)
@@ -178,7 +185,7 @@ func LoginHandler(db *sqlx.DB) fiber.Handler {
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"message": "Login exitoso",
 			"token":   t,
-			"role":    user.Role, // Agregué el rol aquí, útil para el frontend
+			"role":    user.Role,
 		})
 	}
 }

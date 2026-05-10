@@ -20,6 +20,7 @@ import (
 	"github.com/xnzperez/edupay-saas/internal/store"
 	"github.com/xnzperez/edupay-saas/internal/tenant"
 	"github.com/xnzperez/edupay-saas/internal/user"
+	"github.com/xnzperez/edupay-saas/internal/user/student"
 	"github.com/xnzperez/edupay-saas/internal/wallet"
 
 	_ "github.com/xnzperez/edupay-saas/docs"
@@ -103,23 +104,35 @@ func main() {
 	// ==========================================
 	// 2. RUTAS DE ADMINISTRADOR (Solo Cajeros)
 	// ==========================================
-	// Usamos el middleware auth.RequireRole("ADMIN") para proteger estos endpoints
 	api.Get("/users/search", auth.RequireRole("ADMIN"), user.SearchStudentHandler(db))
 	api.Post("/wallets/:user_id/deposit", auth.RequireRole("ADMIN"), wallet.DepositHandler(db, validate))
 	api.Get("/admin/transactions", auth.RequireRole("ADMIN"), wallet.GetAdminTransactions(db))
 
-	// 🔒 Ruta protegida para SuperAdmin
-	api.Get("/tenants", auth.RequireRole("SUPERADMIN"), tenant.GetTenantsHandler(db))
-	api.Patch("/tenants/:id/status", auth.RequireRole("SUPERADMIN"), tenant.UpdateTenantStatusHandler(db))
-
 	// 💼 Módulo del Cajero (Facturación y Deudas)
 	api.Get("/billing/students", auth.RequireRole("ADMIN"), billing.SearchStudentsHandler(db))
 	api.Post("/billing/installments", auth.RequireRole("ADMIN"), billing.CreateInstallmentHandler(db))
-	// Ruta para obtener TODAS las deudas (Solo Cajeros/Admins)
 	api.Get("/billing/installments", auth.RequireRole("ADMIN"), billing.GetAllInstallmentsHandler(db))
-
-	// 📊 Ruta de Métricas (Cajero)
 	api.Get("/billing/stats", auth.RequireRole("ADMIN"), billing.GetBillingStatsHandler(db))
+
+	// ==========================================
+	// 3. RUTAS DE SUPERADMIN (Maestro y Local)
+	// ==========================================
+
+	// 🌍 Gestión Global (Exclusivo Maestro - Controlado por el is_master interno)
+	api.Get("/tenants", auth.RequireRole("SUPERADMIN"), tenant.GetTenantsHandler(db))
+	api.Patch("/tenants/:id/status", auth.RequireRole("SUPERADMIN"), tenant.UpdateTenantStatusHandler(db))
+
+	// 🏢 Módulo de Gestión de Inquilino Local
+	saGroup := api.Group("/superadmin", auth.RequireRole("SUPERADMIN"))
+
+	// Configuración propia
+	saGroup.Get("/my-tenant", tenant.GetMyTenantHandler(db))
+	saGroup.Patch("/my-tenant", tenant.UpdateMyTenantHandler(db))
+
+	// CRUD de Cajeros/Admins
+	saGroup.Get("/admins", student.GetAdminsHandler(db))
+	saGroup.Post("/admins", student.CreateAdminHandler(db))
+	saGroup.Patch("/admins/:id/status", student.UpdateAdminStatusHandler(db)) // NUEVO
 
 	port := os.Getenv("PORT")
 	if port == "" {

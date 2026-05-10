@@ -17,10 +17,13 @@ import StudentsList from "./pages/admin/Students";
 import BillingList from "./pages/admin/Billing";
 import Transactions from "./pages/admin/Transactions";
 
-// Import SaaS Owner views
+// Import SaaS Owner & Local SuperAdmin views
 import SuperAdminLayout from "./components/layouts/SuperAdminLayout";
+import MasterRouteGuard from "./router/MasterRouteGuard";
 import CreateTenant from "./pages/superadmin/CreateTenant";
 import TenantsList from "./pages/superadmin/TenantsList";
+import MyTenant from "./pages/superadmin/MyTenant";
+import AdminsList from "./pages/superadmin/AdminsList"; // IMPORTACIÓN REAL
 
 export default function App() {
   return (
@@ -31,9 +34,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
 
-        {/* 1. Main Gatekeeper (Ensures a valid JWT exists) */}
         <Route element={<ProtectedRoute />}>
-          {/* 2A. Student Gatekeeper */}
           <Route element={<RoleRoute allowedRole="STUDENT" />}>
             <Route path="/student" element={<StudentLayout />}>
               <Route index element={<Dashboard />} />
@@ -42,7 +43,6 @@ export default function App() {
             </Route>
           </Route>
 
-          {/* 2B. Cashier Gatekeeper (University Administrators) */}
           <Route element={<RoleRoute allowedRole="ADMIN" />}>
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
@@ -53,13 +53,19 @@ export default function App() {
             </Route>
           </Route>
 
-          {/* 2C. SaaS Owner Gatekeeper (Super Admin) */}
           <Route element={<RoleRoute allowedRole="SUPERADMIN" />}>
             <Route path="/superadmin" element={<SuperAdminLayout />}>
-              {/* Redirigimos por defecto a la lista de universidades */}
               <Route index element={<Navigate to="tenants" replace />} />
-              <Route path="tenants" element={<TenantsList />} />
-              <Route path="create-tenant" element={<CreateTenant />} />
+
+              <Route element={<MasterRouteGuard />}>
+                <Route path="tenants" element={<TenantsList />} />
+                <Route path="create-tenant" element={<CreateTenant />} />
+              </Route>
+
+              {/* RUTAS DEL SUPERADMIN LOCAL */}
+              <Route path="my-tenant" element={<MyTenant />} />
+              {/* Hemos corregido la ruta aquí: de "students" a "admins" */}
+              <Route path="admins" element={<AdminsList />} />
             </Route>
           </Route>
         </Route>
