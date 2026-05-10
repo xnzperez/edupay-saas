@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
+	"github.com/xnzperez/edupay-saas/internal/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -112,5 +113,74 @@ func UpdateAdminStatusHandler(db *sqlx.DB) fiber.Handler {
 		}
 
 		return c.JSON(fiber.Map{"message": "Estado del cajero actualizado"})
+	}
+}
+
+// StudentListDTO es la proyección ligera de datos para la tabla del frontend
+type StudentListDTO struct {
+	ID        string `json:"id" db:"id"`
+	FullName  string `json:"full_name" db:"full_name"`
+	Email     string `json:"email" db:"email"`
+	IsActive  bool   `json:"is_active" db:"is_active"`
+	CreatedAt string `json:"created_at" db:"created_at"`
+}
+
+// GetPaginatedStudents lista los estudiantes de un tenant específico usando LIMIT/OFFSET
+func GetPaginatedStudents(db *sqlx.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Asumo que tu middleware inyecta el tenant_id en Locals (ajusta si usas otra key)
+		tenantID := c.Locals("tenant_id").(string)
+
+		// Extraer query params de paginación (con valores por defecto)
+		page := c.QueryInt("page", 1)
+		limit := c.QueryInt("limit", 10)
+
+		if page < 1 {
+			page = 1
+		}
+		if limit < 1 {
+			limit = 10
+		}
+		offset := (page - 1) * limit
+
+		// 1. Contar el total absoluto de estudiantes para calcular páginas
+		var total int
+		countQuery := `SELECT COUNT(*) FROM users WHERE tenant_id = $1 AND role = 'STUDENT'`
+		if err := db.Get(&total, countQuery, tenantID); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Error calculando el total de estudiantes",
+			})
+		}
+
+		// 2. Ejecutar consulta con LIMIT y OFFSET
+		var students []StudentListDTO
+		selectQuery := `
+			SELECT id, full_name, email, is_active, created_at 
+			FROM users 
+			WHERE tenant_id = $1 AND role = 'STUDENT'
+			ORDER BY created_at DESC
+			LIMIT $2 OFFSET $3
+		`
+		if err := db.Select(&students, selectQuery, tenantID, limit, offset); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Error obteniendo el listado de estudiantes",
+			})
+		}
+
+		// Prevenir que un slice nil retorne 'null' en el JSON en lugar de '[]'
+		if students == nil {
+			students = []StudentListDTO{}
+		}
+
+		// 3. Construir la respuesta usando tu DTO genérico
+		response := utils.PaginatedResponse[StudentListDTO]{
+			Data:       students,
+			Total:      total,
+			Page:       page,
+			Limit:      limit,
+			TotalPages: utils.CalculateTotalPages(total, limit),
+		}
+
+		return c.JSON(response)
 	}
 }

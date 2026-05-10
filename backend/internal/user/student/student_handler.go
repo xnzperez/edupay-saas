@@ -61,39 +61,6 @@ func EnrollStudentHandler(db *sqlx.DB) fiber.Handler {
 	}
 }
 
-// GetStudentsHandler: Listado de Estudiantes por Tenant (Actualizado con is_active)
-func GetStudentsHandler(db *sqlx.DB) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		tenantID := c.Locals("tenant_id").(string)
-
-		type StudentResponse struct {
-			ID        string `json:"id" db:"id"`
-			FullName  string `json:"full_name" db:"full_name"`
-			Email     string `json:"email" db:"email"`
-			CreatedAt string `json:"created_at" db:"created_at"`
-			IsActive  bool   `json:"is_active" db:"is_active"` // NUEVO
-		}
-
-		var students []StudentResponse
-
-		query := `SELECT id, full_name, email, created_at, is_active 
-                  FROM users 
-                  WHERE tenant_id = $1 AND role = 'STUDENT'
-                  ORDER BY created_at DESC`
-
-		if err := db.Select(&students, query, tenantID); err != nil {
-			fmt.Println("Error SQL en GetStudentsHandler:", err.Error())
-			return c.Status(500).JSON(fiber.Map{"error": "Error al listar estudiantes"})
-		}
-
-		if students == nil {
-			students = []StudentResponse{}
-		}
-
-		return c.JSON(fiber.Map{"data": students})
-	}
-}
-
 // UpdateStudentHandler: Edita la información básica del estudiante
 func UpdateStudentHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {

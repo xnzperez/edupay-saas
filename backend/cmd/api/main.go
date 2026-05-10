@@ -107,7 +107,7 @@ func main() {
 	// 2. RUTAS DE ADMINISTRADOR (Solo Cajeros)
 	// ==========================================
 	api.Get("/users/search", auth.RequireRole("ADMIN"), user.SearchStudentHandler(db))
-	api.Get("/admin/students", auth.RequireRole("ADMIN"), student.GetStudentsHandler(db))
+	api.Get("/admin/students/paginated", auth.RequireRole("ADMIN"), student.GetPaginatedStudents(db))
 	api.Post("/admin/students", auth.RequireRole("ADMIN"), student.EnrollStudentHandler(db))
 	api.Post("/wallets/:user_id/deposit", auth.RequireRole("ADMIN"), wallet.DepositHandler(db, validate))
 	api.Get("/admin/transactions", auth.RequireRole("ADMIN"), wallet.GetAdminTransactions(db))

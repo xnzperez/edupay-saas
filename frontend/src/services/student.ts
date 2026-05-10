@@ -19,9 +19,11 @@ export interface UpdateStudentData {
   email: string;
 }
 
-export const getStudents = async (): Promise<Student[]> => {
-  const response = await api.get("/admin/students");
-  return response.data.data;
+export const getStudents = async (page: number = 1, limit: number = 10) => {
+  const response = await api.get(
+    `/admin/students/paginated?page=${page}&limit=${limit}`,
+  );
+  return response.data;
 };
 
 export const enrollStudent = async (data: EnrollStudentData): Promise<void> => {

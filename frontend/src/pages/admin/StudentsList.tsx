@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   getStudents,
   enrollStudent,
@@ -12,6 +12,12 @@ import { sileo } from "sileo";
 export default function StudentsList() {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Estados de Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   // Estados del Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,11 +36,16 @@ export default function StudentsList() {
 
   const addNotification = useNotificationStore((s) => s.addNotification);
 
-  const fetchStudents = async () => {
+  // useCallback previene la recreación de la función en cada render
+  const fetchStudents = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const data = await getStudents();
-      setStudents(data);
-    } catch (error) {
+      const response = await getStudents(currentPage, limit);
+      // Asumiendo que el backend retorna el PaginatedResponse que definimos
+      setStudents(response.data || []);
+      setTotalPages(response.total_pages || 1);
+      setTotalItems(response.total || 0);
+    } catch (error: unknown) {
       addNotification(
         "Error",
         "No se pudo cargar la lista de estudiantes.",
@@ -47,13 +58,19 @@ export default function StudentsList() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, limit, addNotification]);
 
+  // Se dispara al montar y cuando cambian página o límite
   useEffect(() => {
     fetchStudents();
-  }, []);
+  }, [fetchStudents]);
 
-  // Abrir modal para crear
+  // Manejo de cambio de límite
+  const handleLimitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setLimit(Number(e.target.value));
+    setCurrentPage(1); // Reset a página 1 al cambiar el tamaño del lote
+  };
+
   const openCreateModal = () => {
     setIsEditMode(false);
     setSelectedStudentId(null);
@@ -61,7 +78,6 @@ export default function StudentsList() {
     setIsModalOpen(true);
   };
 
-  // Abrir modal para editar
   const openEditModal = (student: Student) => {
     setIsEditMode(true);
     setSelectedStudentId(student.id);
@@ -69,7 +85,7 @@ export default function StudentsList() {
       full_name: student.full_name,
       email: student.email,
       password: "",
-    }); // La contraseña no se edita aquí
+    });
     setIsModalOpen(true);
   };
 
@@ -104,9 +120,11 @@ export default function StudentsList() {
         });
       }
       setIsModalOpen(false);
-      fetchStudents();
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error || "Error en la operación.";
+      fetchStudents(); // Refresca la tabla actual
+    } catch (error: unknown) {
+      // Tipado estricto mitigando el error 'any'
+      const err = error as { response?: { data?: { error?: string } } };
+      const errorMsg = err.response?.data?.error || "Error en la operación.";
       addNotification("Error", errorMsg, "error");
       sileo.error({ title: "Error", description: errorMsg });
     } finally {
@@ -119,29 +137,34 @@ export default function StudentsList() {
       await updateStudentStatus(id, !currentStatus);
       addNotification(
         "Estado Actualizado",
-        `El estudiante ahora está ${!currentStatus ? "activo" : "suspendido"}.`,
+        `Estudiante ${!currentStatus ? "activo" : "suspendido"}.`,
         "success",
       );
       sileo.success({
         title: "Estado Actualizado",
-        description: `El estudiante ahora está ${!currentStatus ? "activo" : "suspendido"}.`,
+        description: `Estudiante ${!currentStatus ? "activo" : "suspendido"}.`,
       });
       fetchStudents();
-    } catch (error) {
+    } catch (error: unknown) {
       addNotification("Error", "No se pudo cambiar el estado.", "error");
-      sileo.error({ title: "Error", description: "No se pudo cambiar el estado." });
+      sileo.error({
+        title: "Error",
+        description: "No se pudo cambiar el estado.",
+      });
     }
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-nord-6">
             Matrícula de Estudiantes
           </h1>
           <p className="text-nord-4 text-sm mt-1">
-            Gestiona los estudiantes y sus cuentas financieras en la plataforma.
+            Gestiona los estudiantes y sus cuentas financieras. Total:{" "}
+            {totalItems}
           </p>
         </div>
         <button
@@ -152,6 +175,7 @@ export default function StudentsList() {
         </button>
       </div>
 
+      {/* Tabla */}
       <div className="bg-nord-1 rounded-xl border border-nord-2 shadow-xl overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead className="bg-nord-0 border-b border-nord-2">
@@ -226,6 +250,48 @@ export default function StudentsList() {
             )}
           </tbody>
         </table>
+
+        {/* Controles de Paginación */}
+        <div className="bg-nord-0 border-t border-nord-2 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-nord-4">
+            <span>Mostrar:</span>
+            <select
+              value={limit}
+              onChange={handleLimitChange}
+              className="bg-nord-1 border border-nord-2 text-nord-6 rounded px-2 py-1 outline-none focus:border-nord-8 transition-colors"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+            </select>
+            <span>por página</span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1 || isLoading}
+              className="text-sm font-bold text-nord-8 disabled:text-nord-3 disabled:cursor-not-allowed hover:text-nord-9 transition-colors"
+            >
+              &larr; Anterior
+            </button>
+            <span className="text-sm font-medium text-nord-4">
+              Página <span className="text-nord-6">{currentPage}</span> de{" "}
+              <span className="text-nord-6">{totalPages}</span>
+            </span>
+            <button
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
+              disabled={
+                currentPage === totalPages || isLoading || totalPages === 0
+              }
+              className="text-sm font-bold text-nord-8 disabled:text-nord-3 disabled:cursor-not-allowed hover:text-nord-9 transition-colors"
+            >
+              Siguiente &rarr;
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* MODAL UNIFICADO (CREAR/EDITAR) */}
@@ -245,7 +311,6 @@ export default function StudentsList() {
                   : "Se creará el usuario y su billetera digital (Saldo $0)."}
               </p>
             </div>
-
             <div className="space-y-3">
               <input
                 type="text"
@@ -280,7 +345,6 @@ export default function StudentsList() {
                 />
               )}
             </div>
-
             <div className="flex gap-3 pt-4 border-t border-nord-2">
               <button
                 type="button"
