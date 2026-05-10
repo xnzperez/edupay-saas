@@ -102,3 +102,18 @@ export const billingService = {
     window.URL.revokeObjectURL(fileURL);
   },
 };
+
+// DTO que espejea exactamente el struct de Go
+export interface CollectionStatsDTO {
+  status: string;
+  total_amount: number;
+  count: number;
+}
+
+// Función para consumir el endpoint analítico
+export const getCollectionStats = async (): Promise<CollectionStatsDTO[]> => {
+  const response = await api.get<{ data: CollectionStatsDTO[] }>(
+    "/admin/dashboard/stats",
+  );
+  return response.data.data;
+};

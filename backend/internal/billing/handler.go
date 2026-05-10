@@ -615,3 +615,55 @@ func GetBillingStatsHandler(db *sqlx.DB) fiber.Handler {
 		return c.Status(fiber.StatusOK).JSON(stats)
 	}
 }
+
+// CollectionStatsDTO representa la agregación matemática para el gráfico
+type CollectionStatsDTO struct {
+	Status      string  `json:"status" db:"status"`
+	TotalAmount float64 `json:"total_amount" db:"total_amount"`
+	Count       int     `json:"count" db:"count"`
+}
+
+// GetCollectionStats calcula el estado de la cartera (Recaudo vs Mora)
+// @Summary Obtener estadísticas financieras (Cajeros)
+// @Description Calcula en tiempo real el capital recaudado, la deuda activa y los estudiantes en mora.
+// @Tags Facturación (Cajeros)
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param X-Tenant-ID header string true "ID de la Universidad (UUID)"
+// @Success 200 {object} BillingStatsDTO "Métricas calculadas exitosamente"
+// @Failure 500 {object} map[string]interface{} "Error interno al calcular métricas"
+// @Router /billing/stats [get]
+func GetCollectionStats(db *sqlx.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		tenantID := c.Locals("tenant_id").(string)
+
+		var stats []CollectionStatsDTO
+
+		// Agrupación estricta y suma delegada a la base de datos
+		query := `
+			SELECT 
+				status, 
+				COALESCE(SUM(amount), 0) as total_amount, 
+				COUNT(*) as count
+			FROM installments 
+			WHERE tenant_id = $1
+			GROUP BY status
+		`
+
+		if err := db.Select(&stats, query, tenantID); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Error calculando estadísticas de recaudo",
+			})
+		}
+
+		// Prevenir respuestas 'null' si la tabla está vacía
+		if stats == nil {
+			stats = []CollectionStatsDTO{}
+		}
+
+		return c.JSON(fiber.Map{
+			"data": stats,
+		})
+	}
+}

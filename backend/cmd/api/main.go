@@ -114,6 +114,7 @@ func main() {
 	api.Patch("/admin/students/:id", auth.RequireRole("ADMIN"), student.UpdateStudentHandler(db))
 	api.Patch("/admin/students/:id/status", auth.RequireRole("ADMIN"), student.UpdateStudentStatusHandler(db))
 	api.Get("/admin/transactions/export", auth.RequireRole("ADMIN"), wallet.ExportTransactionsCSV(db))
+	api.Get("/admin/dashboard/stats", auth.RequireRole("ADMIN"), billing.GetCollectionStats(db))
 
 	// 💼 Módulo del Cajero (Facturación y Deudas)
 	api.Get("/billing/students", auth.RequireRole("ADMIN"), billing.SearchStudentsHandler(db))

@@ -1,24 +1,59 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router"; // Asegúrate de importar esto si usas react-router-dom / react-router
-import { getBillingStats } from "../../services/billing";
+import { Link } from "react-router";
+import {
+  getBillingStats,
+  getCollectionStats,
+  type CollectionStatsDTO,
+} from "../../services/billing"; // Ajusta si usas otra ruta
 import type { BillingStatsDTO } from "../../types/billing";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+
+// Mapeo de colores exactos de la paleta Nord para el gráfico
+const STATUS_COLORS: Record<string, string> = {
+  PAID: "#88C0D0", // nord-8 (Cyan) para lo recaudado
+  PENDING: "#EBCB8B", // nord-13 (Amarillo) para pendiente
+  OVERDUE: "#BF616A", // nord-11 (Rojo) para morosos
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  PAID: "Recaudado",
+  PENDING: "Por Cobrar",
+  OVERDUE: "En Mora",
+};
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<BillingStatsDTO | null>(null);
+  const [collectionStats, setCollectionStats] = useState<CollectionStatsDTO[]>(
+    [],
+  );
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchAllStats = async () => {
       try {
-        const data = await getBillingStats();
-        setStats(data);
-      } catch (error: any) {
+        // Fetching concurrente: Optimizamos la red pidiendo ambas cosas al mismo tiempo
+        const [billingData, collectionData] = await Promise.all([
+          getBillingStats(),
+          getCollectionStats(),
+        ]);
+
+        setStats(billingData);
+        setCollectionStats(collectionData);
+      } catch (error: unknown) {
+        console.error("Error cargando dashboard:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchStats();
+    fetchAllStats();
   }, []);
 
   if (isLoading || !stats) {
@@ -30,16 +65,40 @@ export default function AdminDashboard() {
           <div className="h-32 bg-nord-1/80 rounded-2xl border border-nord-2/50"></div>
           <div className="h-32 bg-nord-1/80 rounded-2xl border border-nord-2/50"></div>
         </div>
+        <div className="h-64 bg-nord-1/80 rounded-2xl border border-nord-2/50 mt-8"></div>
       </div>
     );
   }
 
-  // Cálculos para la gráfica de distribución
-  const totalCapital = stats.total_collected + stats.total_debt;
-  const collectedPercentage =
-    totalCapital === 0 ? 0 : (stats.total_collected / totalCapital) * 100;
-  const debtPercentage =
-    totalCapital === 0 ? 0 : (stats.total_debt / totalCapital) * 100;
+  // Preparamos los datos para Recharts
+  const chartData = collectionStats.map((item) => ({
+    name: STATUS_LABELS[item.status] || item.status,
+    value: item.total_amount,
+    count: item.count,
+    color: STATUS_COLORS[item.status] || "#D8DEE9", // Default nord-4
+  }));
+
+  // Custom Tooltip para el gráfico
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-nord-0 border border-nord-2 p-3 rounded-lg shadow-xl">
+          <p className="text-nord-6 font-bold">{data.name}</p>
+          <p className="text-nord-4 text-sm mt-1">
+            Monto:{" "}
+            <span className="font-bold text-nord-8">
+              ${data.value.toLocaleString("es-CO")}
+            </span>
+          </p>
+          <p className="text-nord-4 text-sm">
+            Cuotas: <span className="font-bold text-nord-6">{data.count}</span>
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
@@ -92,34 +151,46 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 2. Distribución de Cartera (Gráfica visual con Tailwind puro) */}
+      {/* 2. Distribución de Cartera (Recharts) */}
       <div className="bg-nord-1 p-8 rounded-2xl border border-nord-2 shadow-sm mt-8">
         <h3 className="text-lg font-bold text-nord-6 mb-6">
           Salud de la Cartera Institucional
         </h3>
 
-        {totalCapital === 0 ? (
-          <p className="text-nord-4 text-sm text-center py-4 bg-nord-0 rounded-lg border border-dashed border-nord-3">
-            No hay flujos de capital registrados para calcular la distribución.
+        {chartData.length === 0 ? (
+          <p className="text-nord-4 text-sm text-center py-10 bg-nord-0 rounded-lg border border-dashed border-nord-3">
+            No hay flujos de capital registrados para graficar.
           </p>
         ) : (
-          <div className="space-y-4">
-            <div className="flex justify-between text-sm font-bold text-nord-4">
-              <span>Recaudado ({collectedPercentage.toFixed(1)}%)</span>
-              <span>Por Cobrar ({debtPercentage.toFixed(1)}%)</span>
-            </div>
-
-            {/* Barra de progreso combinada */}
-            <div className="w-full h-4 bg-nord-0 rounded-full overflow-hidden flex shadow-inner">
-              <div
-                className="h-full bg-nord-8 transition-all duration-1000"
-                style={{ width: `${collectedPercentage}%` }}
-              ></div>
-              <div
-                className="h-full bg-nord-11 transition-all duration-1000 opacity-80"
-                style={{ width: `${debtPercentage}%` }}
-              ></div>
-            </div>
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={80} // Esto lo convierte en un gráfico Donut (Aro)
+                  outerRadius={110}
+                  paddingAngle={5}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  wrapperStyle={{
+                    color: "#D8DEE9",
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         )}
       </div>
