@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useAuthStore } from "../../store/authStore";
+import { useNotificationStore } from "../../store/notificationStore";
 import ThemeToggle from "../ThemeToggle";
 
 export default function AdminLayout() {
@@ -8,12 +9,18 @@ export default function AdminLayout() {
   const logout = useAuthStore((state) => state.logout);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // --- LÓGICA DE NOTIFICACIONES ---
+  const { notifications, markAsRead, clearNotifications } =
+    useNotificationStore();
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  // Rutas disponibles para el cajero (ahora con íconos escalables)
+  // Rutas disponibles para el cajero
   const navItems = [
     {
       name: "Inicio",
@@ -111,7 +118,6 @@ export default function AdminLayout() {
         </svg>
       ),
     },
-    // Apuntando a /admin/deposit
     {
       name: "Pagos",
       path: "/admin/deposit",
@@ -152,9 +158,10 @@ export default function AdminLayout() {
         <div className="p-6 border-b border-line flex justify-between items-center">
           <h1 className="text-2xl font-extrabold text-primary tracking-tight">
             EduPay{" "}
-            <span className="text-sm font-medium text-foreground ml-1">Admin</span>
+            <span className="text-sm font-medium text-foreground ml-1">
+              Admin
+            </span>
           </h1>
-          {/* Botón cerrar solo en móvil */}
           <button
             className="md:hidden text-foreground hover:text-danger font-bold text-xl"
             onClick={() => setIsSidebarOpen(false)}
@@ -172,7 +179,7 @@ export default function AdminLayout() {
               key={item.name}
               to={item.path}
               end={item.exact}
-              onClick={() => setIsSidebarOpen(false)} // Cierra el menú al hacer clic
+              onClick={() => setIsSidebarOpen(false)}
               className={({ isActive }) =>
                 `flex items-center px-4 py-3 rounded-lg font-bold transition-all duration-200 ${
                   isActive
@@ -201,7 +208,6 @@ export default function AdminLayout() {
       <main className="flex-1 flex flex-col h-full relative w-full">
         <header className="h-16 bg-background/90 backdrop-blur-md border-b border-line flex items-center justify-between px-4 md:px-8 sticky top-0 z-10 w-full shadow-sm">
           <div className="flex items-center gap-4">
-            {/* --- BOTÓN HAMBURGUESA --- */}
             <button
               className="md:hidden p-2 text-foreground hover:text-primary focus:outline-none"
               onClick={() => setIsSidebarOpen(true)}
@@ -226,23 +232,90 @@ export default function AdminLayout() {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Notificaciones Mock */}
-            <button className="hidden md:flex relative p-2 text-foreground hover:text-primary transition-colors">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            {/* --- SISTEMA DE NOTIFICACIONES REAL --- */}
+            <div className="relative hidden md:block">
+              <button
+                onClick={() => {
+                  setIsNotifOpen(!isNotifOpen);
+                  if (!isNotifOpen) markAsRead();
+                }}
+                className={`relative p-2 transition-colors rounded-full ${isNotifOpen ? "bg-line text-primary" : "text-foreground hover:text-primary"}`}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
-              </svg>
-              <span className="absolute top-1 right-1 w-2 h-2 bg-danger rounded-full animate-pulse"></span>
-            </button>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                  />
+                </svg>
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-danger text-background text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse shadow-lg">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* DROPDOWN DE NOTIFICACIONES */}
+              {isNotifOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setIsNotifOpen(false)}
+                  ></div>
+                  <div className="absolute right-0 mt-3 w-80 bg-surface border border-line rounded-xl shadow-2xl z-20 overflow-hidden animate-fade-in">
+                    <div className="p-4 border-b border-line bg-line/30 flex justify-between items-center">
+                      <h4 className="font-bold text-foreground text-sm">
+                        Registro de Actividad
+                      </h4>
+                      <button
+                        onClick={clearNotifications}
+                        className="text-[10px] text-danger hover:underline uppercase font-bold transition-all"
+                      >
+                        Limpiar
+                      </button>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                      {notifications.length === 0 ? (
+                        <div className="p-8 text-center text-muted text-sm italic">
+                          No hay actividad reciente
+                        </div>
+                      ) : (
+                        notifications.map((n) => (
+                          <div
+                            key={n.id}
+                            className="p-4 border-b border-line hover:bg-line/20 transition-colors"
+                          >
+                            <div className="flex justify-between items-start mb-1">
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${n.type === "success" ? "bg-success/20 text-success" : n.type === "warning" ? "bg-danger/20 text-danger" : "bg-primary/20 text-primary"}`}
+                              >
+                                {n.type}
+                              </span>
+                              <span className="text-[10px] text-muted">
+                                {new Date(n.timestamp).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <p className="text-xs font-bold text-foreground">
+                              {n.title}
+                            </p>
+                            <p className="text-[11px] text-muted leading-relaxed mt-1">
+                              {n.description}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            {/* --- FIN SISTEMA DE NOTIFICACIONES --- */}
 
             <div className="flex items-center gap-3 border-l border-line pl-4">
               <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-muted flex items-center justify-center font-bold text-background shadow-inner text-sm md:text-base">

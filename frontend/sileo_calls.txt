@@ -1,0 +1,117 @@
+--- src\pages\admin\Deposit.tsx ---
+sileo.success({
+        title: "Transacción Exitosa",
+        description:
+          response.message ||
+          `Se depositaron $${data.amount.toLocaleString()} COP.`,
+      })
+--- src\pages\admin\StudentsList.tsx ---
+sileo.error({
+        title: "Error",
+        description: "No se pudo cargar la lista de estudiantes.",
+      })
+sileo.success({
+          title: "Actualizado",
+          description: "Datos del estudiante modificados.",
+        })
+sileo.success({
+          title: "Éxito",
+          description: "Estudiante matriculado y billetera generada.",
+        })
+sileo.error({ title: "Error", description: errorMsg })
+sileo.success({
+        title: "Estado Actualizado",
+        description: `Estudiante ${!currentStatus ? "activo" : "suspendido"}.`,
+      })
+sileo.error({
+        title: "Error",
+        description: "No se pudo cambiar el estado.",
+      })
+--- src\pages\admin\Transactions.tsx ---
+sileo.error({
+        title: "Error",
+        description: "Fallo al obtener transacciones.",
+      })
+sileo.success({
+        title: "Descarga completa",
+        description: "El reporte CSV ha sido generado.",
+      })
+sileo.error({
+        title: "Error",
+        description: "No se pudo generar el archivo de auditoría.",
+      })
+--- src\pages\auth\Login.tsx ---
+sileo.success({
+        title: "¡Acceso concedido!",
+        description: response.message,
+      })
+--- src\pages\student\Dashboard.tsx ---
+sileo.success({
+        title: "Documento Generado",
+        description: "Tu estado de cuenta se ha descargado exitosamente.",
+      })
+sileo.error({
+        title: "Saldo Insuficiente",
+        description: "Recarga tu billetera para cubrir el monto de esta cuota.",
+      })
+sileo.success({
+        title: "¡Transacción Exitosa!",
+        description: "La cuota ha sido saldada y el registro actualizado.",
+      })
+sileo.error({
+        title: "Monto No Válido",
+        description: "El monto mínimo de recarga es de $1,000 COP.",
+      })
+--- src\pages\student\Store.tsx ---
+sileo.success({
+        title: "¡Solicitud Aprobada!",
+        description: `El saldo fue descontado. Tu ${itemName} llegará al correo asociado en breve.`,
+      })
+--- src\pages\student\Transfer.tsx ---
+sileo.success({
+        title: "¡Transferencia exitosa!",
+        description:
+          response.message || `Has enviado $${data.amount} a ${data.to_email}`,
+      })
+--- src\pages\superadmin\AdminsList.tsx ---
+sileo.error({
+        title: "Error",
+        description: "No se pudo obtener la lista de cajeros.",
+      })
+sileo.success({ title: "Éxito", description: "Cajero registrado correctamente." })
+sileo.error({
+        title: "Error",
+        description: "El correo ya está registrado o los datos son inválidos.",
+      })
+sileo.success({
+        title: "Actualizado",
+        description: `Cajero ${!currentStatus ? "activado" : "suspendido"}.`,
+      })
+sileo.error({ title: "Error", description: "No se pudo cambiar el estado." })
+--- src\pages\superadmin\CreateTenant.tsx ---
+sileo.success({
+        title: "Nueva Universidad",
+        description: `Se ha registrado correctamente la institución ${data.name} en el sistema.`,
+      })
+--- src\pages\superadmin\MyTenant.tsx ---
+sileo.error({
+          title: "Error",
+          description: "No se pudo cargar la información de la universidad.",
+        })
+sileo.success({
+        title: "Actualizado",
+        description: "Configuración de la universidad guardada con éxito.",
+      })
+sileo.error({
+        title: "Error",
+        description: "Fallo al actualizar la configuración.",
+      })
+--- src\pages\superadmin\TenantsList.tsx ---
+sileo.success({
+        title: "Estado Actualizado",
+        description: `La ${updatedTenant.name} ha sido ${newStatus ? "activada" : "suspendida"} exitosamente.`,
+      })
+sileo.error({
+        title: "Error",
+        description: "No se pudo actualizar el estado de la universidad.",
+      })
