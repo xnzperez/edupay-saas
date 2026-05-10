@@ -121,7 +121,7 @@ export default function Login() {
                 src={src}
                 alt={`EduPay Feature ${index + 1}`}
                 // Optimizaciones de carga
-                fetchpriority={index === 0 ? "high" : "auto"}
+                fetchPriority={index === 0 ? "high" : "auto"}
                 loading={index === 0 ? "eager" : "lazy"}
                 decoding="async"
                 className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${

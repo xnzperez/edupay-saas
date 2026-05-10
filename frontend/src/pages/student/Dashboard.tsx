@@ -6,7 +6,6 @@ import type { WalletDashboardResponse } from "../../services/wallet";
 import {
   getMyInstallments,
   payInstallment,
-  billingService,
 } from "../../services/billing";
 import { createPaymentPreference } from "../../services/payment";
 
@@ -32,7 +31,6 @@ export default function Dashboard() {
   const [debts, setDebts] = useState<Installment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [payingId, setPayingId] = useState<string | null>(null);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const fetchDashboardData = async (currentPage: number) => {
     try {
@@ -69,19 +67,6 @@ export default function Dashboard() {
     });
   }, [wallet, txFilter]);
 
-  const handleDownloadReceipt = async (installmentId: string) => {
-    setDownloadingId(installmentId);
-    try {
-      await billingService.downloadReceipt(installmentId);
-      sileo.success({
-        title: "Documento Generado",
-        description: "Estado de cuenta descargado.",
-      });
-    } catch (error) {
-    } finally {
-      setDownloadingId(null);
-    }
-  };
 
   const handlePayDebt = async (installmentId: string, amount: number) => {
     if (!wallet || wallet.current_balance < amount) {
@@ -138,8 +123,12 @@ export default function Dashboard() {
     );
   }
 
+  interface CustomJwtPayload {
+    email?: string;
+  }
+  const currentUser = user as CustomJwtPayload | null;
   const studentName =
-    user?.email?.split("@")[0].replace(".", " ").toUpperCase() || "ESTUDIANTE";
+    currentUser?.email?.split("@")[0].replace(".", " ").toUpperCase() || "ESTUDIANTE";
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">

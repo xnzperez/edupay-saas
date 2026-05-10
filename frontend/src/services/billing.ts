@@ -40,6 +40,13 @@ export const getAllInstallments = async (): Promise<AdminInstallmentDTO[]> => {
   return response.data;
 };
 
+export interface BillingStatsDTO {
+  total_collected: number;
+  total_debt: number;
+  overdue_count: number;
+  active_students: number;
+}
+
 // Función para obtener los KPIs en tiempo real
 export const getBillingStats = async (): Promise<BillingStatsDTO> => {
   const response = await api.get<BillingStatsDTO>("/billing/stats");

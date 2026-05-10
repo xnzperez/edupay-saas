@@ -24,7 +24,7 @@ export default function CreateTenant() {
     reset,
     formState: { errors, isSubmitting },
   } = useForm<CreateTenantFormData>({
-    resolver: zodResolver(createTenantSchema),
+    resolver: zodResolver(createTenantSchema) as any,
     defaultValues: {
       name: "",
       domain: "",

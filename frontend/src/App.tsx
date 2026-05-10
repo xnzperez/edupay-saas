@@ -31,7 +31,7 @@ import AdminsList from "./pages/superadmin/AdminsList";
 
 export default function App() {
   // EXTRAEMOS EL TEMA: Esto hace que App.tsx se re-renderice al cambiar el tema
-  const theme = useThemeStore((state) => state.theme);
+  useThemeStore((state) => state.theme);
 
   return (
     <BrowserRouter>
@@ -51,7 +51,6 @@ export default function App() {
               "bg-primary/20! hover:bg-primary/30! text-primary! font-bold!",
           },
         }}
-        className="z-[9999]"
       />
 
       <Routes>

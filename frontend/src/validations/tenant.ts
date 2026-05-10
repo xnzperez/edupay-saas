@@ -14,3 +14,4 @@ export const createTenantSchema = z.object({
 });
 
 export type CreateTenantFormData = z.infer<typeof createTenantSchema>;
+export type CreateTenantInput = z.input<typeof createTenantSchema>;

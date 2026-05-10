@@ -31,7 +31,7 @@ export default function AdminsList() {
       addNotification(
         "Error",
         "No se pudo obtener la lista de cajeros.",
-        "error",
+        "warning",
       );
       sileo.error({
         title: "Error",
@@ -60,7 +60,7 @@ export default function AdminsList() {
       addNotification(
         "Error",
         "El correo ya está registrado o los datos son inválidos.",
-        "error",
+        "warning",
       );
       sileo.error({
         title: "Error",
@@ -85,7 +85,7 @@ export default function AdminsList() {
       });
       fetchAdmins();
     } catch (error) {
-      addNotification("Error", "No se pudo cambiar el estado.", "error");
+      addNotification("Error", "No se pudo cambiar el estado.", "warning");
       sileo.error({ title: "Error", description: "No se pudo cambiar el estado." });
     }
   };

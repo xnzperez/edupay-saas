@@ -49,7 +49,7 @@ export default function StudentsList() {
       addNotification(
         "Error",
         "No se pudo cargar la lista de estudiantes.",
-        "error",
+        "warning",
       );
       sileo.error({
         title: "Error",
@@ -125,7 +125,7 @@ export default function StudentsList() {
       // Tipado estricto mitigando el error 'any'
       const err = error as { response?: { data?: { error?: string } } };
       const errorMsg = err.response?.data?.error || "Error en la operación.";
-      addNotification("Error", errorMsg, "error");
+      addNotification("Error", errorMsg, "warning");
       sileo.error({ title: "Error", description: errorMsg });
     } finally {
       setIsSaving(false);
@@ -146,7 +146,7 @@ export default function StudentsList() {
       });
       fetchStudents();
     } catch (error: unknown) {
-      addNotification("Error", "No se pudo cambiar el estado.", "error");
+      addNotification("Error", "No se pudo cambiar el estado.", "warning");
       sileo.error({
         title: "Error",
         description: "No se pudo cambiar el estado.",

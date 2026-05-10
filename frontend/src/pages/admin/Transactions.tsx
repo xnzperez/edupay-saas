@@ -27,7 +27,7 @@ export default function Transactions() {
       setTransactions(response.data || []);
       setTotalPages(response.total_pages || 1);
     } catch (error: unknown) {
-      addNotification("Error", "Fallo al obtener transacciones.", "error");
+      addNotification("Error", "Fallo al obtener transacciones.", "warning");
       sileo.error({
         title: "Error",
         description: "Fallo al obtener transacciones.",
@@ -71,7 +71,7 @@ export default function Transactions() {
       addNotification(
         "Error",
         "No se pudo generar el archivo de auditoría.",
-        "error",
+        "warning",
       );
       sileo.error({
         title: "Error",

@@ -29,7 +29,7 @@ export default function MyTenant() {
         addNotification(
           "Error",
           "No se pudo cargar la información de la universidad.",
-          "error",
+          "warning",
         );
         sileo.error({
           title: "Error",
@@ -63,7 +63,7 @@ export default function MyTenant() {
       addNotification(
         "Error",
         "Fallo al actualizar la configuración.",
-        "error",
+        "warning",
       );
       sileo.error({
         title: "Error",
