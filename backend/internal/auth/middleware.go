@@ -58,8 +58,11 @@ func Protected() fiber.Handler {
 			userRole := claims["role"].(string)
 			tokenTenantID := claims["tenant_id"].(string)
 
-			// ID DEL MAESTRO (Idealmente cárgalo con os.Getenv("MASTER_TENANT_ID"))
-			masterTenantID := "88619ff3-06a0-4993-979b-99053fb5e0f6"
+			// USAMOS VARIABLE DE ENTORNO EN VEZ DE HARDCODE
+			masterTenantID := os.Getenv("MASTER_TENANT_ID")
+			if masterTenantID == "" {
+				masterTenantID = "fallback-master-id-para-local" // Opcional, pero útil si se te olvida ponerla en local
+			}
 
 			// CROSS-CHECK DE SEGURIDAD ABSOLUTA:
 			isMasterAdmin := userRole == "SUPERADMIN" && tokenTenantID == masterTenantID
