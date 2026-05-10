@@ -1,33 +1,87 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   getGlobalTransactions,
+  exportTransactionsCSV,
   type GlobalTransactionDTO,
 } from "../../services/wallet";
+import { useNotificationStore } from "../../store/notificationStore";
+import { sileo } from "sileo";
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState<GlobalTransactionDTO[]>([]);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
 
-  const fetchTransactions = async (currentPage: number) => {
+  // Estados de Paginación
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const addNotification = useNotificationStore((s) => s.addNotification);
+
+  // Memoización de la petición para evitar re-renders por dependencias fantasma
+  const fetchTransactions = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await getGlobalTransactions(currentPage, 10); // 10 registros por página
-      setTransactions(response.data);
-      setTotalPages(response.total_pages);
-    } catch (error: any) {
+      const response = await getGlobalTransactions(page, limit);
+      setTransactions(response.data || []);
+      setTotalPages(response.total_pages || 1);
+    } catch (error: unknown) {
+      addNotification("Error", "Fallo al obtener transacciones.", "error");
+      sileo.error({
+        title: "Error",
+        description: "Fallo al obtener transacciones.",
+      });
     } finally {
       setIsLoading(false);
     }
+  }, [page, limit, addNotification]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
+
+  // Handler para resetear la página al cambiar el límite
+  const handleLimitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setLimit(Number(e.target.value));
+    setPage(1);
   };
 
-  // Escuchamos los cambios de página para disparar la petición HTTP
-  useEffect(() => {
-    fetchTransactions(page);
-  }, [page]);
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await exportTransactionsCSV();
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement("a");
+      link.href = url;
 
-  // Helper para renderizar los tipos de transacción con los colores de Nord
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      link.setAttribute("download", `Auditoria_Transacciones_${timestamp}.csv`);
+
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Descarga completa",
+        description: "El reporte CSV ha sido generado.",
+      });
+    } catch (error: unknown) {
+      addNotification(
+        "Error",
+        "No se pudo generar el archivo de auditoría.",
+        "error",
+      );
+      sileo.error({
+        title: "Error",
+        description: "No se pudo generar el archivo de auditoría.",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const renderTxBadge = (type: string) => {
     switch (type) {
       case "DEPOSIT":
@@ -61,13 +115,25 @@ export default function Transactions() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-extrabold text-nord-6 tracking-tight">
-          Auditoría de Transacciones
-        </h1>
-        <p className="text-nord-4 mt-2 font-medium">
-          Historial inmutable de todos los movimientos financieros del Tenant.
-        </p>
+      {/* Header unificado (Título + Botón Global de Acción) */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+        <div>
+          <h1 className="text-3xl font-extrabold text-nord-6 tracking-tight">
+            Auditoría de Transacciones
+          </h1>
+          <p className="text-nord-4 mt-2 font-medium">
+            Historial inmutable de todos los movimientos financieros del Tenant.
+          </p>
+        </div>
+
+        {/* Corrección: Removido el bloqueo por array vacío y forzado el z-index */}
+        <button
+          onClick={handleExportCSV}
+          disabled={isExporting || isLoading}
+          className="bg-nord-8 hover:bg-nord-9 text-nord-0 px-6 py-2 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95 shadow-md disabled:opacity-50 disabled:transform-none disabled:cursor-not-allowed cursor-pointer"
+        >
+          {isExporting ? "Generando CSV..." : "Exportar Auditoría CSV"}
+        </button>
       </div>
 
       <div className="bg-nord-1 border border-nord-2 rounded-2xl shadow-sm overflow-hidden">
@@ -113,13 +179,10 @@ export default function Transactions() {
                     <td className="p-4">{renderTxBadge(tx.tx_type)}</td>
                     <td className="p-4 text-right">
                       <p
-                        className={`font-black tabular-nums ${
-                          tx.tx_type === "DEPOSIT" || tx.tx_type === "TRANSFER_IN"
-                            ? "text-nord-14"
-                            : "text-nord-11"
-                        }`}
+                        className={`font-black tabular-nums ${tx.tx_type === "DEPOSIT" || tx.tx_type === "TRANSFER_IN" ? "text-nord-14" : "text-nord-11"}`}
                       >
-                        {tx.tx_type === "DEPOSIT" || tx.tx_type === "TRANSFER_IN"
+                        {tx.tx_type === "DEPOSIT" ||
+                        tx.tx_type === "TRANSFER_IN"
                           ? "+"
                           : "-"}
                         ${tx.amount.toLocaleString("es-CO")}
@@ -132,26 +195,46 @@ export default function Transactions() {
           </div>
         )}
 
-        {/* Controles de Paginación */}
-        {!isLoading && totalPages > 1 && (
-          <div className="p-4 border-t border-nord-2 bg-nord-2/10 flex items-center justify-between">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="text-xs font-bold px-4 py-2 bg-nord-3 text-nord-6 rounded-lg hover:bg-nord-4 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            >
-              ← ANTERIOR
-            </button>
-            <span className="text-xs font-bold text-nord-4 uppercase tracking-widest">
-              Página {page} de {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => p + 1)}
-              disabled={page >= totalPages}
-              className="text-xs font-bold px-4 py-2 bg-nord-3 text-nord-6 rounded-lg hover:bg-nord-4 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            >
-              SIGUIENTE →
-            </button>
+        {/* Controles de Paginación estilo StudentsList */}
+        {!isLoading && transactions.length > 0 && (
+          <div className="bg-nord-0 border-t border-nord-2 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-sm text-nord-4">
+              <span>Mostrar:</span>
+              <select
+                value={limit}
+                onChange={handleLimitChange}
+                className="bg-nord-1 border border-nord-2 text-nord-6 rounded px-2 py-1 outline-none focus:border-nord-8 transition-colors"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+              <span>por página</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                disabled={page === 1}
+                className="text-sm font-bold text-nord-8 disabled:text-nord-3 disabled:cursor-not-allowed hover:text-nord-9 transition-colors"
+              >
+                &larr; Anterior
+              </button>
+              <span className="text-sm font-medium text-nord-4">
+                Página <span className="text-nord-6">{page}</span> de{" "}
+                <span className="text-nord-6">{totalPages}</span>
+              </span>
+              <button
+                onClick={() =>
+                  setPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={page >= totalPages || totalPages === 0}
+                className="text-sm font-bold text-nord-8 disabled:text-nord-3 disabled:cursor-not-allowed hover:text-nord-9 transition-colors"
+              >
+                Siguiente &rarr;
+              </button>
+            </div>
           </div>
         )}
       </div>

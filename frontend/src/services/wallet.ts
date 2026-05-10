@@ -98,3 +98,11 @@ export const getGlobalTransactions = async (
   );
   return response.data;
 };
+
+// exportTransactionsCSV solicita el flujo de datos y evita que Axios intente parsearlo como JSON
+export const exportTransactionsCSV = async (): Promise<Blob> => {
+  const response = await api.get("/admin/transactions/export", {
+    responseType: "blob", // Crítico: Le dice a Axios que trate la respuesta como archivo binario/crudo
+  });
+  return response.data;
+};
