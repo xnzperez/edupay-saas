@@ -23,18 +23,18 @@ export default function Dashboard() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-nord-6">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-foreground">
             Resumen Global
           </h1>
-          <p className="text-nord-4 text-sm mt-1">
+          <p className="text-foreground text-sm mt-1">
             Métricas de rendimiento de todos los inquilinos (SaaS)
           </p>
         </div>
         <div className="flex gap-2">
-          <button className="px-4 py-2 bg-nord-3 text-nord-6 text-sm font-bold rounded-lg hover:bg-nord-2 transition-colors border border-nord-2">
+          <button className="px-4 py-2 bg-muted text-foreground text-sm font-bold rounded-lg hover:bg-line transition-colors border border-line">
             Exportar PDF
           </button>
-          <button className="px-4 py-2 bg-nord-8 text-nord-0 text-sm font-bold rounded-lg hover:bg-nord-9 transition-colors shadow-md">
+          <button className="px-4 py-2 bg-primary text-background text-sm font-bold rounded-lg hover:bg-primary-hover transition-colors shadow-md">
             Actualizar Datos
           </button>
         </div>
@@ -43,10 +43,10 @@ export default function Dashboard() {
       {/* --- GRILLA DE WIDGETS --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
         {/* Widget 1: Ingresos Totales */}
-        <div className="bg-nord-1 p-6 rounded-xl border border-nord-2 shadow-lg relative overflow-hidden group hover:border-nord-8 transition-colors">
+        <div className="bg-surface p-6 rounded-xl border border-line shadow-lg relative overflow-hidden group hover:border-primary transition-colors">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <svg
-              className="w-16 h-16 text-nord-8"
+              className="w-16 h-16 text-primary"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -59,13 +59,13 @@ export default function Dashboard() {
               />
             </svg>
           </div>
-          <p className="text-sm font-bold text-nord-4 uppercase tracking-wider">
+          <p className="text-sm font-bold text-foreground uppercase tracking-wider">
             Ingresos (MRR)
           </p>
-          <h3 className="text-3xl font-black text-nord-6 mt-2">
+          <h3 className="text-3xl font-black text-foreground mt-2">
             {loading ? "..." : mockMetrics.totalRevenue}
           </h3>
-          <p className="text-xs font-bold text-nord-14 mt-2 flex items-center gap-1">
+          <p className="text-xs font-bold text-success mt-2 flex items-center gap-1">
             <svg
               className="w-3 h-3"
               fill="none"
@@ -84,40 +84,40 @@ export default function Dashboard() {
         </div>
 
         {/* Widget 2: Inquilinos Activos */}
-        <div className="bg-nord-1 p-6 rounded-xl border border-nord-2 shadow-lg relative overflow-hidden group hover:border-nord-13 transition-colors">
-          <p className="text-sm font-bold text-nord-4 uppercase tracking-wider">
+        <div className="bg-surface p-6 rounded-xl border border-line shadow-lg relative overflow-hidden group hover:border-primary transition-colors">
+          <p className="text-sm font-bold text-foreground uppercase tracking-wider">
             Universidades Activas
           </p>
-          <h3 className="text-3xl font-black text-nord-6 mt-2">
+          <h3 className="text-3xl font-black text-foreground mt-2">
             {loading ? "..." : mockMetrics.activeTenants}
           </h3>
-          <p className="text-xs font-bold text-nord-13 mt-2">
+          <p className="text-xs font-bold text-primary mt-2">
             Plataforma operando al 100%
           </p>
         </div>
 
         {/* Widget 3: Transacciones Diarias */}
-        <div className="bg-nord-1 p-6 rounded-xl border border-nord-2 shadow-lg relative overflow-hidden group hover:border-nord-9 transition-colors">
-          <p className="text-sm font-bold text-nord-4 uppercase tracking-wider">
+        <div className="bg-surface p-6 rounded-xl border border-line shadow-lg relative overflow-hidden group hover:border-primary-hover transition-colors">
+          <p className="text-sm font-bold text-foreground uppercase tracking-wider">
             Transacciones Hoy
           </p>
-          <h3 className="text-3xl font-black text-nord-6 mt-2">
+          <h3 className="text-3xl font-black text-foreground mt-2">
             {loading ? "..." : mockMetrics.dailyTransactions}
           </h3>
-          <p className="text-xs font-bold text-nord-4 mt-2">
+          <p className="text-xs font-bold text-foreground mt-2">
             A través de todos los tenants
           </p>
         </div>
 
         {/* Widget 4: Tasa de Morosidad */}
-        <div className="bg-nord-1 p-6 rounded-xl border border-nord-2 shadow-lg relative overflow-hidden group hover:border-nord-11 transition-colors">
-          <p className="text-sm font-bold text-nord-4 uppercase tracking-wider">
+        <div className="bg-surface p-6 rounded-xl border border-line shadow-lg relative overflow-hidden group hover:border-danger transition-colors">
+          <p className="text-sm font-bold text-foreground uppercase tracking-wider">
             Tasa de Morosidad Global
           </p>
-          <h3 className="text-3xl font-black text-nord-6 mt-2">
+          <h3 className="text-3xl font-black text-foreground mt-2">
             {loading ? "..." : mockMetrics.defaultRate}
           </h3>
-          <p className="text-xs font-bold text-nord-11 mt-2 flex items-center gap-1">
+          <p className="text-xs font-bold text-danger mt-2 flex items-center gap-1">
             <svg
               className="w-3 h-3"
               fill="none"
@@ -137,8 +137,8 @@ export default function Dashboard() {
       </div>
 
       {/* --- ESPACIO PARA GRÁFICO O TABLA (Siguiente paso) --- */}
-      <div className="mt-8 bg-nord-1 rounded-xl border border-nord-2 p-6 shadow-lg h-64 flex items-center justify-center border-dashed">
-        <p className="text-nord-3 font-bold text-lg text-center">
+      <div className="mt-8 bg-surface rounded-xl border border-line p-6 shadow-lg h-64 flex items-center justify-center border-dashed">
+        <p className="text-muted font-bold text-lg text-center">
           [Aquí irá el gráfico de ingresos o la tabla de últimas universidades
           registradas]
         </p>

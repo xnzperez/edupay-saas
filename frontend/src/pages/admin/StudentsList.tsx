@@ -159,54 +159,54 @@ export default function StudentsList() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-nord-6">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-foreground">
             Matrícula de Estudiantes
           </h1>
-          <p className="text-nord-4 text-sm mt-1">
+          <p className="text-foreground text-sm mt-1">
             Gestiona los estudiantes y sus cuentas financieras. Total:{" "}
             {totalItems}
           </p>
         </div>
         <button
           onClick={openCreateModal}
-          className="bg-nord-8 hover:bg-nord-9 text-nord-0 px-6 py-2 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95 shadow-md"
+          className="bg-primary hover:bg-primary-hover text-background px-6 py-2 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95 shadow-md"
         >
           + Matricular Alumno
         </button>
       </div>
 
       {/* Tabla */}
-      <div className="bg-nord-1 rounded-xl border border-nord-2 shadow-xl overflow-hidden">
+      <div className="bg-surface rounded-xl border border-line shadow-xl overflow-hidden">
         <table className="w-full text-left border-collapse">
-          <thead className="bg-nord-0 border-b border-nord-2">
+          <thead className="bg-background border-b border-line">
             <tr>
-              <th className="p-4 text-xs font-bold text-nord-3 uppercase">
+              <th className="p-4 text-xs font-bold text-muted uppercase">
                 Nombre Completo
               </th>
-              <th className="p-4 text-xs font-bold text-nord-3 uppercase">
+              <th className="p-4 text-xs font-bold text-muted uppercase">
                 Correo
               </th>
-              <th className="p-4 text-xs font-bold text-nord-3 uppercase text-center">
+              <th className="p-4 text-xs font-bold text-muted uppercase text-center">
                 Estado
               </th>
-              <th className="p-4 text-xs font-bold text-nord-3 uppercase text-right">
+              <th className="p-4 text-xs font-bold text-muted uppercase text-right">
                 Acciones
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-nord-2">
+          <tbody className="divide-y divide-line">
             {isLoading ? (
               <tr>
                 <td
                   colSpan={4}
-                  className="p-10 text-center text-nord-4 animate-pulse font-medium"
+                  className="p-10 text-center text-foreground animate-pulse font-medium"
                 >
                   Cargando base de datos...
                 </td>
               </tr>
             ) : students.length === 0 ? (
               <tr>
-                <td colSpan={4} className="p-10 text-center text-nord-4 italic">
+                <td colSpan={4} className="p-10 text-center text-foreground italic">
                   No hay estudiantes matriculados en esta sede.
                 </td>
               </tr>
@@ -214,17 +214,17 @@ export default function StudentsList() {
               students.map((student) => (
                 <tr
                   key={student.id}
-                  className="hover:bg-nord-0 transition-colors"
+                  className="hover:bg-background transition-colors"
                 >
-                  <td className="p-4 text-nord-6 font-bold">
+                  <td className="p-4 text-foreground font-bold">
                     {student.full_name}
                   </td>
-                  <td className="p-4 text-nord-4 font-mono text-sm">
+                  <td className="p-4 text-foreground font-mono text-sm">
                     {student.email}
                   </td>
                   <td className="p-4 text-center">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold ${student.is_active ? "bg-nord-14/10 text-nord-14" : "bg-nord-11/10 text-nord-11"}`}
+                      className={`px-3 py-1 rounded-full text-xs font-bold ${student.is_active ? "bg-success/10 text-success" : "bg-danger/10 text-danger"}`}
                     >
                       {student.is_active ? "ACTIVO" : "SUSPENDIDO"}
                     </span>
@@ -232,7 +232,7 @@ export default function StudentsList() {
                   <td className="p-4 flex items-center justify-end gap-2">
                     <button
                       onClick={() => openEditModal(student)}
-                      className="text-xs font-bold px-3 py-1 rounded border border-nord-8 text-nord-8 hover:bg-nord-8 hover:text-nord-0 transition-colors"
+                      className="text-xs font-bold px-3 py-1 rounded border border-primary text-primary hover:bg-primary hover:text-background transition-colors"
                     >
                       Editar
                     </button>
@@ -240,7 +240,7 @@ export default function StudentsList() {
                       onClick={() =>
                         toggleStatus(student.id, student.is_active)
                       }
-                      className={`text-xs font-bold px-3 py-1 rounded border transition-colors ${student.is_active ? "border-nord-11 text-nord-11 hover:bg-nord-11 hover:text-nord-6" : "border-nord-14 text-nord-14 hover:bg-nord-14 hover:text-nord-0"}`}
+                      className={`text-xs font-bold px-3 py-1 rounded border transition-colors ${student.is_active ? "border-danger text-danger hover:bg-danger hover:text-foreground" : "border-success text-success hover:bg-success hover:text-background"}`}
                     >
                       {student.is_active ? "Suspender" : "Reactivar"}
                     </button>
@@ -252,13 +252,13 @@ export default function StudentsList() {
         </table>
 
         {/* Controles de Paginación */}
-        <div className="bg-nord-0 border-t border-nord-2 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm text-nord-4">
+        <div className="bg-background border-t border-line p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-foreground">
             <span>Mostrar:</span>
             <select
               value={limit}
               onChange={handleLimitChange}
-              className="bg-nord-1 border border-nord-2 text-nord-6 rounded px-2 py-1 outline-none focus:border-nord-8 transition-colors"
+              className="bg-surface border border-line text-foreground rounded px-2 py-1 outline-none focus:border-primary transition-colors"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
@@ -271,13 +271,13 @@ export default function StudentsList() {
             <button
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1 || isLoading}
-              className="text-sm font-bold text-nord-8 disabled:text-nord-3 disabled:cursor-not-allowed hover:text-nord-9 transition-colors"
+              className="text-sm font-bold text-primary disabled:text-muted disabled:cursor-not-allowed hover:text-primary-hover transition-colors"
             >
               &larr; Anterior
             </button>
-            <span className="text-sm font-medium text-nord-4">
-              Página <span className="text-nord-6">{currentPage}</span> de{" "}
-              <span className="text-nord-6">{totalPages}</span>
+            <span className="text-sm font-medium text-foreground">
+              Página <span className="text-foreground">{currentPage}</span> de{" "}
+              <span className="text-foreground">{totalPages}</span>
             </span>
             <button
               onClick={() =>
@@ -286,7 +286,7 @@ export default function StudentsList() {
               disabled={
                 currentPage === totalPages || isLoading || totalPages === 0
               }
-              className="text-sm font-bold text-nord-8 disabled:text-nord-3 disabled:cursor-not-allowed hover:text-nord-9 transition-colors"
+              className="text-sm font-bold text-primary disabled:text-muted disabled:cursor-not-allowed hover:text-primary-hover transition-colors"
             >
               Siguiente &rarr;
             </button>
@@ -296,16 +296,16 @@ export default function StudentsList() {
 
       {/* MODAL UNIFICADO (CREAR/EDITAR) */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-nord-0/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <form
             onSubmit={handleSubmit}
-            className="bg-nord-1 w-full max-w-md rounded-2xl border border-nord-2 shadow-2xl p-6 space-y-5"
+            className="bg-surface w-full max-w-md rounded-2xl border border-line shadow-2xl p-6 space-y-5"
           >
             <div>
-              <h2 className="text-xl font-bold text-nord-6">
+              <h2 className="text-xl font-bold text-foreground">
                 {isEditMode ? "Editar Estudiante" : "Nueva Matrícula"}
               </h2>
-              <p className="text-xs text-nord-4 mt-1">
+              <p className="text-xs text-foreground mt-1">
                 {isEditMode
                   ? "Modifica los datos de contacto."
                   : "Se creará el usuario y su billetera digital (Saldo $0)."}
@@ -316,7 +316,7 @@ export default function StudentsList() {
                 type="text"
                 placeholder="Nombre completo"
                 required
-                className="w-full bg-nord-0 border border-nord-2 rounded-lg p-3 text-nord-6 focus:border-nord-8 outline-none transition-colors"
+                className="w-full bg-background border border-line rounded-lg p-3 text-foreground focus:border-primary outline-none transition-colors"
                 value={formData.full_name}
                 onChange={(e) =>
                   setFormData({ ...formData, full_name: e.target.value })
@@ -326,7 +326,7 @@ export default function StudentsList() {
                 type="email"
                 placeholder="Correo institucional"
                 required
-                className="w-full bg-nord-0 border border-nord-2 rounded-lg p-3 text-nord-6 focus:border-nord-8 outline-none transition-colors"
+                className="w-full bg-background border border-line rounded-lg p-3 text-foreground focus:border-primary outline-none transition-colors"
                 value={formData.email}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
@@ -337,7 +337,7 @@ export default function StudentsList() {
                   type="password"
                   placeholder="Contraseña temporal"
                   required
-                  className="w-full bg-nord-0 border border-nord-2 rounded-lg p-3 text-nord-6 focus:border-nord-8 outline-none transition-colors"
+                  className="w-full bg-background border border-line rounded-lg p-3 text-foreground focus:border-primary outline-none transition-colors"
                   value={formData.password}
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
@@ -345,18 +345,18 @@ export default function StudentsList() {
                 />
               )}
             </div>
-            <div className="flex gap-3 pt-4 border-t border-nord-2">
+            <div className="flex gap-3 pt-4 border-t border-line">
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="flex-1 text-nord-4 hover:text-nord-6 font-bold transition-colors"
+                className="flex-1 text-foreground hover:text-foreground font-bold transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="flex-1 bg-nord-8 text-nord-0 py-2 rounded-lg font-bold hover:bg-nord-9 transition-colors disabled:opacity-50"
+                className="flex-1 bg-primary text-background py-2 rounded-lg font-bold hover:bg-primary-hover transition-colors disabled:opacity-50"
               >
                 {isSaving
                   ? "Procesando..."

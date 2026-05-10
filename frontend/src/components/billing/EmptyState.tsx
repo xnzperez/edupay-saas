@@ -4,8 +4,8 @@ interface EmptyStateProps {
 
 export function EmptyState({ message }: EmptyStateProps) {
   return (
-    <div className="h-full bg-nord-1/50 border border-dashed border-nord-3 rounded-2xl flex flex-col items-center justify-center p-12 text-center text-nord-4 min-h-[400px]">
-      <div className="w-16 h-16 bg-nord-2 rounded-full flex items-center justify-center mb-4 text-nord-4">
+    <div className="h-full bg-surface/50 border border-dashed border-line rounded-2xl flex flex-col items-center justify-center p-12 text-center text-foreground min-h-[400px]">
+      <div className="w-16 h-16 bg-line rounded-full flex items-center justify-center mb-4 text-foreground">
         <svg
           className="w-8 h-8"
           xmlns="http://www.w3.org/2000/svg"

@@ -129,22 +129,22 @@ export default function Dashboard() {
       <div className="space-y-8 animate-pulse duration-1000">
         {/* Skeleton del Encabezado */}
         <div className="space-y-3">
-          <div className="h-10 w-64 bg-nord-3/40 rounded-lg"></div>
-          <div className="h-5 w-48 bg-nord-3/20 rounded-lg"></div>
+          <div className="h-10 w-64 bg-muted/40 rounded-lg"></div>
+          <div className="h-5 w-48 bg-muted/20 rounded-lg"></div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Skeleton de la Columna Principal (Billetera y Gráficos) */}
           <div className="lg:col-span-2 space-y-8">
-            <div className="h-64 bg-nord-1/80 rounded-3xl border border-nord-2/50"></div>
-            <div className="h-48 bg-nord-1/80 rounded-3xl border border-nord-2/50"></div>
+            <div className="h-64 bg-surface/80 rounded-3xl border border-line/50"></div>
+            <div className="h-48 bg-surface/80 rounded-3xl border border-line/50"></div>
           </div>
 
           {/* Skeleton de la Columna Lateral (Deudas) */}
           <div className="space-y-4">
-            <div className="h-6 w-48 bg-nord-3/40 rounded-lg mb-6"></div>
-            <div className="h-40 bg-nord-1/80 rounded-3xl border border-nord-2/50"></div>
-            <div className="h-40 bg-nord-1/80 rounded-3xl border border-nord-2/50"></div>
+            <div className="h-6 w-48 bg-muted/40 rounded-lg mb-6"></div>
+            <div className="h-40 bg-surface/80 rounded-3xl border border-line/50"></div>
+            <div className="h-40 bg-surface/80 rounded-3xl border border-line/50"></div>
           </div>
         </div>
       </div>
@@ -154,32 +154,32 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div>
-        <h1 className="text-3xl font-black text-nord-6 tracking-tighter">
-          Dashboard <span className="text-nord-8">Financiero</span>
+        <h1 className="text-3xl font-black text-foreground tracking-tighter">
+          Dashboard <span className="text-primary">Financiero</span>
         </h1>
-        <p className="text-nord-4 mt-1 font-medium">
+        <p className="text-foreground mt-1 font-medium">
           Sesión activa: {user?.email}
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <div className="bg-nord-1 p-8 rounded-3xl border border-nord-2 shadow-2xl relative overflow-hidden">
-            <div className="absolute -right-8 -top-8 w-32 h-32 bg-nord-8/5 rounded-full blur-3xl"></div>
-            <p className="text-xs font-bold text-nord-4 uppercase tracking-widest mb-2">
+          <div className="bg-surface p-8 rounded-3xl border border-line shadow-2xl relative overflow-hidden">
+            <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/5 rounded-full blur-3xl"></div>
+            <p className="text-xs font-bold text-foreground uppercase tracking-widest mb-2">
               Saldo Neto Disponible
             </p>
-            <h2 className="text-5xl font-black text-nord-8 tabular-nums">
+            <h2 className="text-5xl font-black text-primary tabular-nums">
               ${wallet?.current_balance.toLocaleString()}
             </h2>
 
-            <div className="mt-10 pt-6 border-t border-nord-2/40">
-              <p className="text-sm font-bold text-nord-4 mb-4">
+            <div className="mt-10 pt-6 border-t border-line/40">
+              <p className="text-sm font-bold text-foreground mb-4">
                 Recarga rápida vía Mercado Pago
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-nord-4 font-bold">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground font-bold">
                     $
                   </span>
                   <input
@@ -191,13 +191,13 @@ export default function Dashboard() {
                       )
                     }
                     placeholder="Monto a recargar"
-                    className="w-full pl-9 pr-4 py-3 bg-nord-0 border border-nord-3 rounded-xl text-nord-6 focus:ring-2 focus:ring-nord-8 focus:outline-none transition-all font-bold"
+                    className="w-full pl-9 pr-4 py-3 bg-background border border-line rounded-xl text-foreground focus:ring-2 focus:ring-primary focus:outline-none transition-all font-bold"
                   />
                 </div>
                 <button
                   onClick={handleTopUp}
                   disabled={isRedirecting || !topUpAmount}
-                  className="bg-nord-8 hover:bg-nord-9 text-nord-0 font-extrabold py-3 px-8 rounded-xl transition-all shadow-lg shadow-nord-8/10 disabled:opacity-30"
+                  className="bg-primary hover:bg-primary-hover text-background font-extrabold py-3 px-8 rounded-xl transition-all shadow-lg shadow-primary/10 disabled:opacity-30"
                 >
                   {isRedirecting ? "REDIRIGIENDO..." : "RECARGAR"}
                 </button>
@@ -205,41 +205,41 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-nord-1 border border-nord-2 rounded-3xl overflow-hidden">
-            <div className="p-6 bg-nord-2/30 flex justify-between items-center">
-              <h3 className="text-sm font-black text-nord-6 uppercase tracking-wider">
+          <div className="bg-surface border border-line rounded-3xl overflow-hidden">
+            <div className="p-6 bg-line/30 flex justify-between items-center">
+              <h3 className="text-sm font-black text-foreground uppercase tracking-wider">
                 Actividad Reciente
               </h3>
             </div>
 
             {/* CORRECCIÓN: Ahora validamos .transactions.data.length */}
             {wallet?.transactions.data.length === 0 ? (
-              <div className="p-12 text-center text-nord-4 italic">
+              <div className="p-12 text-center text-foreground italic">
                 No hay registros en el historial.
               </div>
             ) : (
-              <div className="divide-y divide-nord-2">
+              <div className="divide-y divide-line">
                 {/* CORRECCIÓN: Mapeamos sobre .transactions.data */}
                 {wallet?.transactions.data.map((tx) => (
                   <div
                     key={tx.id}
-                    className="p-5 flex items-center justify-between hover:bg-nord-2/20 transition-colors"
+                    className="p-5 flex items-center justify-between hover:bg-line/20 transition-colors"
                   >
                     <div className="flex items-center gap-4">
                       <div
-                        className={`w-2 h-10 rounded-full ${tx.tx_type === "DEPOSIT" || tx.tx_type === "TRANSFER_IN" ? "bg-nord-14" : "bg-nord-11"}`}
+                        className={`w-2 h-10 rounded-full ${tx.tx_type === "DEPOSIT" || tx.tx_type === "TRANSFER_IN" ? "bg-success" : "bg-danger"}`}
                       ></div>
                       <div>
-                        <p className="font-bold text-nord-6 text-sm">
+                        <p className="font-bold text-foreground text-sm">
                           {tx.reference || "Transacción"}
                         </p>
-                        <p className="text-xs text-nord-4 font-mono">
+                        <p className="text-xs text-foreground font-mono">
                           {new Date(tx.created_at).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
                     <p
-                      className={`font-black text-lg ${tx.tx_type === "DEPOSIT" || tx.tx_type === "TRANSFER_IN" ? "text-nord-14" : "text-nord-11"}`}
+                      className={`font-black text-lg ${tx.tx_type === "DEPOSIT" || tx.tx_type === "TRANSFER_IN" ? "text-success" : "text-danger"}`}
                     >
                       {tx.tx_type === "DEPOSIT" || tx.tx_type === "TRANSFER_IN"
                         ? "+"
@@ -251,21 +251,21 @@ export default function Dashboard() {
 
                 {/* CONTROLES DE PAGINACIÓN */}
                 {wallet && wallet.transactions.total_pages > 1 && (
-                  <div className="p-4 flex items-center justify-between bg-nord-2/10">
+                  <div className="p-4 flex items-center justify-between bg-line/10">
                     <button
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page === 1}
-                      className="text-xs font-bold px-4 py-2 bg-nord-3 text-nord-6 rounded-lg hover:bg-nord-4 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="text-xs font-bold px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
                       ← ANTERIOR
                     </button>
-                    <span className="text-xs font-bold text-nord-4 uppercase tracking-widest">
+                    <span className="text-xs font-bold text-foreground uppercase tracking-widest">
                       Página {page} de {wallet.transactions.total_pages}
                     </span>
                     <button
                       onClick={() => setPage((p) => p + 1)}
                       disabled={page >= wallet.transactions.total_pages}
-                      className="text-xs font-bold px-4 py-2 bg-nord-3 text-nord-6 rounded-lg hover:bg-nord-4 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="text-xs font-bold px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
                       SIGUIENTE →
                     </button>
@@ -278,18 +278,18 @@ export default function Dashboard() {
 
         {/* COLUMNA DERECHA INTACTA (Deudas) */}
         <div className="space-y-6">
-          <h3 className="text-sm font-black text-nord-6 uppercase tracking-wider flex items-center gap-2">
+          <h3 className="text-sm font-black text-foreground uppercase tracking-wider flex items-center gap-2">
             Compromisos Pendientes
             {debts.length > 0 && (
-              <span className="bg-nord-11 text-nord-0 px-2 py-0.5 rounded text-[10px]">
+              <span className="bg-danger text-background px-2 py-0.5 rounded text-[10px]">
                 {debts.length}
               </span>
             )}
           </h3>
 
           {debts.length === 0 ? (
-            <div className="bg-nord-1 border border-dashed border-nord-3 p-10 rounded-3xl text-center">
-              <p className="text-nord-4 font-bold text-sm">
+            <div className="bg-surface border border-dashed border-line p-10 rounded-3xl text-center">
+              <p className="text-foreground font-bold text-sm">
                 SIN DEUDAS ACTIVAS
               </p>
             </div>
@@ -298,29 +298,29 @@ export default function Dashboard() {
               {debts.map((debt) => (
                 <div
                   key={debt.id}
-                  className="bg-nord-1 border border-nord-2 p-6 rounded-3xl shadow-lg hover:border-nord-8 transition-all group"
+                  className="bg-surface border border-line p-6 rounded-3xl shadow-lg hover:border-primary transition-all group"
                 >
-                  <p className="text-[10px] font-black text-nord-4 uppercase mb-2">
+                  <p className="text-[10px] font-black text-foreground uppercase mb-2">
                     Vencimiento: {new Date(debt.due_date).toLocaleDateString()}
                   </p>
-                  <h4 className="font-bold text-nord-6 leading-tight mb-4">
+                  <h4 className="font-bold text-foreground leading-tight mb-4">
                     {debt.description}
                   </h4>
-                  <p className="text-3xl font-black text-nord-8 mb-6">
+                  <p className="text-3xl font-black text-primary mb-6">
                     ${debt.amount.toLocaleString()}
                   </p>
                   <div className="space-y-3">
                     <button
                       onClick={() => handlePayDebt(debt.id, debt.amount)}
                       disabled={payingId === debt.id}
-                      className="w-full bg-nord-8 hover:bg-nord-9 text-nord-0 font-extrabold py-3 rounded-xl transition-all disabled:opacity-40"
+                      className="w-full bg-primary hover:bg-primary-hover text-background font-extrabold py-3 rounded-xl transition-all disabled:opacity-40"
                     >
                       {payingId === debt.id ? "PROCESANDO..." : "PAGAR AHORA"}
                     </button>
                     <button
                       onClick={() => handleDownloadReceipt(debt.id)}
                       disabled={downloadingId === debt.id}
-                      className="w-full bg-nord-2 hover:bg-nord-3 text-nord-6 font-bold py-2.5 rounded-xl transition-all disabled:opacity-40 text-xs flex items-center justify-center gap-2"
+                      className="w-full bg-line hover:bg-muted text-foreground font-bold py-2.5 rounded-xl transition-all disabled:opacity-40 text-xs flex items-center justify-center gap-2"
                     >
                       {downloadingId === debt.id
                         ? "GENERANDO PDF..."

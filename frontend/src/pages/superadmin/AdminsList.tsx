@@ -94,53 +94,53 @@ export default function AdminsList() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-nord-6">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-foreground">
             Gestión de Personal Administrativo
           </h1>
-          <p className="text-nord-4 text-sm mt-1">
+          <p className="text-foreground text-sm mt-1">
             Administra los cajeros y personal con acceso al sistema de tu
             universidad.
           </p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-nord-8 hover:bg-nord-9 text-nord-0 px-6 py-2 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95"
+          className="bg-primary hover:bg-primary-hover text-background px-6 py-2 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95"
         >
           + Nuevo Cajero
         </button>
       </div>
 
-      <div className="bg-nord-1 rounded-xl border border-nord-2 shadow-xl overflow-hidden">
+      <div className="bg-surface rounded-xl border border-line shadow-xl overflow-hidden">
         <table className="w-full text-left border-collapse">
-          <thead className="bg-nord-0 border-b border-nord-2">
+          <thead className="bg-background border-b border-line">
             <tr>
-              <th className="p-4 text-xs font-bold text-nord-3 uppercase">
+              <th className="p-4 text-xs font-bold text-muted uppercase">
                 Nombre Completo
               </th>
-              <th className="p-4 text-xs font-bold text-nord-3 uppercase">
+              <th className="p-4 text-xs font-bold text-muted uppercase">
                 Correo Institucional
               </th>
-              <th className="p-4 text-xs font-bold text-nord-3 uppercase text-center">
+              <th className="p-4 text-xs font-bold text-muted uppercase text-center">
                 Estado
               </th>
-              <th className="p-4 text-xs font-bold text-nord-3 uppercase text-right">
+              <th className="p-4 text-xs font-bold text-muted uppercase text-right">
                 Acciones
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-nord-2">
+          <tbody className="divide-y divide-line">
             {isLoading ? (
               <tr>
                 <td
                   colSpan={4}
-                  className="p-10 text-center text-nord-4 animate-pulse"
+                  className="p-10 text-center text-foreground animate-pulse"
                 >
                   Consultando base de datos...
                 </td>
               </tr>
             ) : admins.length === 0 ? (
               <tr>
-                <td colSpan={4} className="p-10 text-center text-nord-4 italic">
+                <td colSpan={4} className="p-10 text-center text-foreground italic">
                   No hay cajeros registrados aún.
                 </td>
               </tr>
@@ -148,17 +148,17 @@ export default function AdminsList() {
               admins.map((admin) => (
                 <tr
                   key={admin.id}
-                  className="hover:bg-nord-0 transition-colors"
+                  className="hover:bg-background transition-colors"
                 >
-                  <td className="p-4 text-nord-6 font-medium">
+                  <td className="p-4 text-foreground font-medium">
                     {admin.full_name}
                   </td>
-                  <td className="p-4 text-nord-4 font-mono text-sm">
+                  <td className="p-4 text-foreground font-mono text-sm">
                     {admin.email}
                   </td>
                   <td className="p-4 text-center">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold ${admin.is_active ? "bg-nord-14/10 text-nord-14" : "bg-nord-11/10 text-nord-11"}`}
+                      className={`px-3 py-1 rounded-full text-xs font-bold ${admin.is_active ? "bg-success/10 text-success" : "bg-danger/10 text-danger"}`}
                     >
                       {admin.is_active ? "ACTIVO" : "SUSPENDIDO"}
                     </span>
@@ -166,7 +166,7 @@ export default function AdminsList() {
                   <td className="p-4 text-right">
                     <button
                       onClick={() => toggleStatus(admin.id, admin.is_active)}
-                      className={`text-xs font-bold px-3 py-1 rounded border transition-colors ${admin.is_active ? "border-nord-11 text-nord-11 hover:bg-nord-11 hover:text-nord-6" : "border-nord-14 text-nord-14 hover:bg-nord-14 hover:text-nord-0"}`}
+                      className={`text-xs font-bold px-3 py-1 rounded border transition-colors ${admin.is_active ? "border-danger text-danger hover:bg-danger hover:text-foreground" : "border-success text-success hover:bg-success hover:text-background"}`}
                     >
                       {admin.is_active ? "Suspender" : "Reactivar"}
                     </button>
@@ -180,12 +180,12 @@ export default function AdminsList() {
 
       {/* MODAL PARA CREACIÓN */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-nord-0/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <form
             onSubmit={handleCreate}
-            className="bg-nord-1 w-full max-w-md rounded-2xl border border-nord-2 shadow-2xl p-6 space-y-4"
+            className="bg-surface w-full max-w-md rounded-2xl border border-line shadow-2xl p-6 space-y-4"
           >
-            <h2 className="text-xl font-bold text-nord-6">
+            <h2 className="text-xl font-bold text-foreground">
               Registrar Nuevo Personal
             </h2>
             <div className="space-y-3">
@@ -193,7 +193,7 @@ export default function AdminsList() {
                 type="text"
                 placeholder="Nombre completo"
                 required
-                className="w-full bg-nord-0 border border-nord-2 rounded-lg p-2 text-nord-6 focus:border-nord-8 outline-none"
+                className="w-full bg-background border border-line rounded-lg p-2 text-foreground focus:border-primary outline-none"
                 value={formData.full_name}
                 onChange={(e) =>
                   setFormData({ ...formData, full_name: e.target.value })
@@ -203,7 +203,7 @@ export default function AdminsList() {
                 type="email"
                 placeholder="Email institucional"
                 required
-                className="w-full bg-nord-0 border border-nord-2 rounded-lg p-2 text-nord-6 focus:border-nord-8 outline-none"
+                className="w-full bg-background border border-line rounded-lg p-2 text-foreground focus:border-primary outline-none"
                 value={formData.email}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
@@ -213,7 +213,7 @@ export default function AdminsList() {
                 type="password"
                 placeholder="Contraseña temporal"
                 required
-                className="w-full bg-nord-0 border border-nord-2 rounded-lg p-2 text-nord-6 focus:border-nord-8 outline-none"
+                className="w-full bg-background border border-line rounded-lg p-2 text-foreground focus:border-primary outline-none"
                 value={formData.password}
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
@@ -224,14 +224,14 @@ export default function AdminsList() {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="flex-1 text-nord-4 hover:text-nord-6 font-bold"
+                className="flex-1 text-foreground hover:text-foreground font-bold"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="flex-1 bg-nord-8 text-nord-0 py-2 rounded-lg font-bold hover:bg-nord-9"
+                className="flex-1 bg-primary text-background py-2 rounded-lg font-bold hover:bg-primary-hover"
               >
                 {isSaving ? "Guardando..." : "Registrar"}
               </button>

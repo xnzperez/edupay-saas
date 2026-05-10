@@ -79,19 +79,19 @@ export default function TenantsList() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-nord-6">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-foreground">
             Gestión de Universidades
           </h1>
-          <p className="text-nord-4 text-sm mt-1">
+          <p className="text-foreground text-sm mt-1">
             Visualiza y administra los inquilinos registrados en la plataforma.
           </p>
         </div>
       </div>
 
       {/* --- BARRA DE BÚSQUEDA --- */}
-      <div className="bg-nord-1 p-4 rounded-xl border border-nord-2 shadow-sm flex items-center gap-3">
+      <div className="bg-surface p-4 rounded-xl border border-line shadow-sm flex items-center gap-3">
         <svg
-          className="w-5 h-5 text-nord-4"
+          className="w-5 h-5 text-foreground"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -106,30 +106,30 @@ export default function TenantsList() {
         <input
           type="text"
           placeholder="Buscar universidad por nombre..."
-          className="bg-transparent border-none outline-none text-nord-6 w-full font-medium placeholder-nord-3"
+          className="bg-transparent border-none outline-none text-foreground w-full font-medium placeholder-muted"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
       {/* --- TABLA DE DATOS REAL --- */}
-      <div className="bg-nord-1 rounded-xl border border-nord-2 overflow-hidden shadow-lg">
+      <div className="bg-surface rounded-xl border border-line overflow-hidden shadow-lg">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-nord-2/50 border-b border-nord-2 text-nord-4 text-sm uppercase tracking-wider">
+              <tr className="bg-line/50 border-b border-line text-foreground text-sm uppercase tracking-wider">
                 <th className="p-4 font-bold">ID del Inquilino</th>
                 <th className="p-4 font-bold">Universidad</th>
                 <th className="p-4 font-bold">Fecha de Registro</th>
                 <th className="p-4 font-bold text-center">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-nord-2">
+            <tbody className="divide-y divide-line">
               {isLoading ? (
                 <tr>
                   <td
                     colSpan={4}
-                    className="p-8 text-center text-nord-4 font-bold animate-pulse"
+                    className="p-8 text-center text-foreground font-bold animate-pulse"
                   >
                     Cargando información desde el servidor...
                   </td>
@@ -138,7 +138,7 @@ export default function TenantsList() {
                 <tr>
                   <td
                     colSpan={4}
-                    className="p-8 text-center text-nord-3 font-bold"
+                    className="p-8 text-center text-muted font-bold"
                   >
                     No se encontraron universidades.
                   </td>
@@ -147,13 +147,13 @@ export default function TenantsList() {
                 filteredTenants.map((tenant) => (
                   <tr
                     key={tenant.id}
-                    className="hover:bg-nord-2/30 transition-colors group"
+                    className="hover:bg-line/30 transition-colors group"
                   >
-                    <td className="p-4 text-xs font-mono text-nord-3 group-hover:text-nord-4 transition-colors">
+                    <td className="p-4 text-xs font-mono text-muted group-hover:text-foreground transition-colors">
                       {tenant.id}
                     </td>
-                    <td className="p-4 font-bold text-nord-6">{tenant.name}</td>
-                    <td className="p-4 text-sm text-nord-4">
+                    <td className="p-4 font-bold text-foreground">{tenant.name}</td>
+                    <td className="p-4 text-sm text-foreground">
                       {new Date(tenant.created_at).toLocaleDateString("es-CO", {
                         year: "numeric",
                         month: "long",
@@ -163,7 +163,7 @@ export default function TenantsList() {
                     <td className="p-4 text-center">
                       <button
                         onClick={() => setSelectedTenant(tenant)}
-                        className="text-nord-8 hover:text-nord-9 text-sm font-bold px-3 py-1 rounded border border-nord-8/30 hover:border-nord-8 transition-all"
+                        className="text-primary hover:text-primary-hover text-sm font-bold px-3 py-1 rounded border border-primary/30 hover:border-primary transition-all"
                       >
                         Detalles
                       </button>
@@ -179,20 +179,20 @@ export default function TenantsList() {
       {/* --- MODAL DE DETALLES DEL INQUILINO --- */}
       {selectedTenant && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-nord-0 border border-nord-2 rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+          <div className="bg-background border border-line rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
             {/* Header del Modal */}
-            <div className="p-6 border-b border-nord-2 flex justify-between items-start bg-nord-1">
+            <div className="p-6 border-b border-line flex justify-between items-start bg-surface">
               <div>
-                <h3 className="text-xl font-bold text-nord-8">
+                <h3 className="text-xl font-bold text-primary">
                   {selectedTenant.name}
                 </h3>
-                <p className="text-xs text-nord-4 font-mono mt-1 mt-1">
+                <p className="text-xs text-foreground font-mono mt-1 mt-1">
                   ID: {selectedTenant.id}
                 </p>
               </div>
               <button
                 onClick={() => setSelectedTenant(null)}
-                className="text-nord-4 hover:text-nord-11 transition-colors p-1"
+                className="text-foreground hover:text-danger transition-colors p-1"
               >
                 <svg
                   className="w-6 h-6"
@@ -213,34 +213,34 @@ export default function TenantsList() {
             {/* Cuerpo del Modal (Con datos reales y dinámicos) */}
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-nord-1 p-3 rounded-lg border border-nord-2">
-                  <p className="text-xs font-bold text-nord-4 uppercase">
+                <div className="bg-surface p-3 rounded-lg border border-line">
+                  <p className="text-xs font-bold text-foreground uppercase">
                     Estado Operativo
                   </p>
                   <p
-                    className={`text-sm font-bold flex items-center gap-2 mt-1 ${selectedTenant.is_active ? "text-nord-14" : "text-nord-11"}`}
+                    className={`text-sm font-bold flex items-center gap-2 mt-1 ${selectedTenant.is_active ? "text-success" : "text-danger"}`}
                   >
                     <span
-                      className={`w-2 h-2 rounded-full ${selectedTenant.is_active ? "bg-nord-14 animate-pulse" : "bg-nord-11"}`}
+                      className={`w-2 h-2 rounded-full ${selectedTenant.is_active ? "bg-success animate-pulse" : "bg-danger"}`}
                     ></span>
                     {selectedTenant.is_active ? "Activo" : "Suspendido"}
                   </p>
                 </div>
-                <div className="bg-nord-1 p-3 rounded-lg border border-nord-2">
-                  <p className="text-xs font-bold text-nord-4 uppercase">
+                <div className="bg-surface p-3 rounded-lg border border-line">
+                  <p className="text-xs font-bold text-foreground uppercase">
                     Plan SaaS
                   </p>
-                  <p className="text-sm font-bold text-nord-13 mt-1">
+                  <p className="text-sm font-bold text-primary mt-1">
                     Enterprise
                   </p>
                 </div>
               </div>
 
               <div>
-                <p className="text-xs font-bold text-nord-4 uppercase mb-1">
+                <p className="text-xs font-bold text-foreground uppercase mb-1">
                   Fecha de Alta
                 </p>
-                <p className="text-sm text-nord-6">
+                <p className="text-sm text-foreground">
                   {new Date(selectedTenant.created_at).toLocaleString("es-CO")}
                 </p>
               </div>
@@ -251,8 +251,8 @@ export default function TenantsList() {
                 disabled={isToggling}
                 className={`w-full mt-4 font-bold py-2 px-4 rounded-lg border transition-all flex items-center justify-center gap-2 shadow-md ${
                   selectedTenant.is_active
-                    ? "bg-nord-11/10 text-nord-11 border-nord-11 hover:bg-nord-11 hover:text-nord-0"
-                    : "bg-nord-14/10 text-nord-14 border-nord-14 hover:bg-nord-14 hover:text-nord-0"
+                    ? "bg-danger/10 text-danger border-danger hover:bg-danger hover:text-background"
+                    : "bg-success/10 text-success border-success hover:bg-success hover:text-background"
                 } ${isToggling ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 {isToggling ? (

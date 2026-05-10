@@ -54,10 +54,10 @@ export default function Store() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Encabezado */}
       <div>
-        <h1 className="text-3xl font-black text-nord-6 tracking-tighter">
-          Tienda de <span className="text-nord-8">Servicios</span>
+        <h1 className="text-3xl font-black text-foreground tracking-tighter">
+          Tienda de <span className="text-primary">Servicios</span>
         </h1>
-        <p className="text-nord-4 mt-1 font-medium">
+        <p className="text-foreground mt-1 font-medium">
           Adquiere certificados académicos oficiales descontando de tu
           billetera.
         </p>
@@ -68,24 +68,24 @@ export default function Store() {
         {CATALOG.map((item) => (
           <div
             key={item.id}
-            className="bg-nord-1 border border-nord-2 p-8 rounded-3xl shadow-lg hover:border-nord-8 transition-all group flex flex-col h-full"
+            className="bg-surface border border-line p-8 rounded-3xl shadow-lg hover:border-primary transition-all group flex flex-col h-full"
           >
             <div className="text-4xl mb-4">{item.icon}</div>
 
-            <h3 className="text-xl font-bold text-nord-6 mb-2 leading-tight">
+            <h3 className="text-xl font-bold text-foreground mb-2 leading-tight">
               {item.name}
             </h3>
 
-            <p className="text-sm text-nord-4 mb-6 flex-grow">
+            <p className="text-sm text-foreground mb-6 flex-grow">
               {item.description}
             </p>
 
-            <div className="border-t border-nord-2/50 pt-6 mt-auto">
+            <div className="border-t border-line/50 pt-6 mt-auto">
               <div className="flex items-end justify-between mb-6">
-                <span className="text-xs font-bold text-nord-4 uppercase tracking-widest">
+                <span className="text-xs font-bold text-foreground uppercase tracking-widest">
                   Valor Unitario
                 </span>
-                <span className="text-2xl font-black text-nord-8 tabular-nums">
+                <span className="text-2xl font-black text-primary tabular-nums">
                   ${item.price.toLocaleString()}
                 </span>
               </div>
@@ -93,7 +93,7 @@ export default function Store() {
               <button
                 onClick={() => handleBuyCertificate(item.id, item.name)}
                 disabled={purchasingId === item.id}
-                className="w-full bg-nord-8 hover:bg-nord-9 text-nord-0 font-extrabold py-3.5 rounded-xl transition-all disabled:opacity-40 disabled:cursor-wait shadow-lg shadow-nord-8/10"
+                className="w-full bg-primary hover:bg-primary-hover text-background font-extrabold py-3.5 rounded-xl transition-all disabled:opacity-40 disabled:cursor-wait shadow-lg shadow-primary/10"
               >
                 {purchasingId === item.id
                   ? "PROCESANDO PAGO..."
@@ -105,10 +105,10 @@ export default function Store() {
       </div>
 
       {/* Nota de advertencia */}
-      <div className="bg-nord-3/20 border border-nord-3 p-5 rounded-2xl flex items-start gap-4">
+      <div className="bg-muted/20 border border-line p-5 rounded-2xl flex items-start gap-4">
         <span className="text-xl">ℹ️</span>
-        <p className="text-sm text-nord-4">
-          <strong className="text-nord-6">Proceso Asíncrono:</strong> Al hacer
+        <p className="text-sm text-foreground">
+          <strong className="text-foreground">Proceso Asíncrono:</strong> Al hacer
           clic en comprar, el sistema verificará tu saldo con bloqueo de fila
           (ACID). Si es aprobado, el PDF se generará en los servidores y se
           despachará automáticamente a tu correo electrónico registrado.

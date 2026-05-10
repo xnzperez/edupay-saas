@@ -26,20 +26,20 @@ export default function DebtsList() {
     switch (status) {
       case "PAID":
         return (
-          <span className="px-3 py-1 bg-nord-14/20 text-nord-14 text-xs font-bold rounded-full">
+          <span className="px-3 py-1 bg-success/20 text-success text-xs font-bold rounded-full">
             PAGADO
           </span>
         );
       case "OVERDUE":
         return (
-          <span className="px-3 py-1 bg-nord-11/20 text-nord-11 text-xs font-bold rounded-full">
+          <span className="px-3 py-1 bg-danger/20 text-danger text-xs font-bold rounded-full">
             EN MORA
           </span>
         );
       case "PENDING":
       default:
         return (
-          <span className="px-3 py-1 bg-nord-13/20 text-nord-13 text-xs font-bold rounded-full">
+          <span className="px-3 py-1 bg-primary/20 text-primary text-xs font-bold rounded-full">
             PENDIENTE
           </span>
         );
@@ -48,7 +48,7 @@ export default function DebtsList() {
 
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center animate-pulse text-nord-4 font-mono">
+      <div className="flex h-64 items-center justify-center animate-pulse text-foreground font-mono">
         CARGANDO REGISTROS FINANCIEROS...
       </div>
     );
@@ -57,18 +57,18 @@ export default function DebtsList() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-extrabold text-nord-6 tracking-tight">
+        <h1 className="text-3xl font-extrabold text-foreground tracking-tight">
           Control de Obligaciones
         </h1>
-        <p className="text-nord-4 mt-2 font-medium">
+        <p className="text-foreground mt-2 font-medium">
           Listado general de todas las deudas emitidas a los estudiantes.
         </p>
       </div>
 
-      <div className="bg-nord-1 border border-nord-2 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-surface border border-line rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-nord-4">
-            <thead className="bg-nord-2/50 text-xs uppercase text-nord-4 font-bold">
+          <table className="w-full text-left text-sm text-foreground">
+            <thead className="bg-line/50 text-xs uppercase text-foreground font-bold">
               <tr>
                 <th className="px-6 py-4">Estudiante</th>
                 <th className="px-6 py-4">Concepto</th>
@@ -77,10 +77,10 @@ export default function DebtsList() {
                 <th className="px-6 py-4">Estado</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-nord-2">
+            <tbody className="divide-y divide-line">
               {debts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-nord-4">
+                  <td colSpan={5} className="px-6 py-8 text-center text-foreground">
                     No hay obligaciones financieras registradas en el sistema.
                   </td>
                 </tr>
@@ -88,13 +88,13 @@ export default function DebtsList() {
                 debts.map((debt) => (
                   <tr
                     key={debt.id}
-                    className="hover:bg-nord-2/30 transition-colors"
+                    className="hover:bg-line/30 transition-colors"
                   >
                     <td className="px-6 py-4">
-                      <p className="text-nord-6 font-bold">
+                      <p className="text-foreground font-bold">
                         {debt.student_name}
                       </p>
-                      <p className="text-xs text-nord-3">
+                      <p className="text-xs text-muted">
                         {debt.student_email}
                       </p>
                     </td>
@@ -104,7 +104,7 @@ export default function DebtsList() {
                     <td className="px-6 py-4">
                       {new Date(debt.due_date).toLocaleDateString("es-CO")}
                     </td>
-                    <td className="px-6 py-4 font-bold text-nord-6">
+                    <td className="px-6 py-4 font-bold text-foreground">
                       ${debt.amount.toLocaleString("es-CO")}
                     </td>
                     <td className="px-6 py-4">

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useAuthStore } from "../../store/authStore";
+import ThemeToggle from "../ThemeToggle";
 
 export default function StudentLayout() {
   const navigate = useNavigate();
@@ -19,16 +20,16 @@ export default function StudentLayout() {
   ];
 
   return (
-    <div className="min-h-screen bg-nord-0 text-nord-6 font-sans flex flex-col">
+    <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
       {/* --- TOP NAVBAR --- */}
-      <nav className="bg-nord-1/90 backdrop-blur-md border-b border-nord-2 sticky top-0 z-40 shadow-sm">
+      <nav className="bg-surface/90 backdrop-blur-md border-b border-line sticky top-0 z-40 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 md:px-8 h-16 flex justify-between items-center">
           {/* Sección Izquierda: Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-nord-8 flex items-center justify-center font-bold text-nord-0 shadow-sm">
+            <div className="w-8 h-8 rounded bg-primary flex items-center justify-center font-bold text-background shadow-sm">
               E
             </div>
-            <h1 className="text-xl font-bold text-nord-8 tracking-wide">
+            <h1 className="text-xl font-bold text-primary tracking-wide">
               EduPay
             </h1>
           </div>
@@ -43,8 +44,8 @@ export default function StudentLayout() {
                 className={({ isActive }) =>
                   `font-bold text-sm transition-all duration-200 border-b-2 py-5 ${
                     isActive
-                      ? "text-nord-8 border-nord-8"
-                      : "text-nord-4 border-transparent hover:text-nord-6 hover:border-nord-4"
+                      ? "text-primary border-primary"
+                      : "text-foreground border-transparent hover:text-foreground hover:border-foreground"
                   }`
                 }
               >
@@ -55,14 +56,18 @@ export default function StudentLayout() {
 
           {/* Sección Derecha: Usuario y Logout Desktop */}
           <div className="hidden md:flex items-center gap-4">
-            <div className="flex items-center gap-2 border-r border-nord-2 pr-4">
-              <span className="text-sm font-medium text-nord-4">
+            <div className="flex items-center gap-2 border-r border-line pr-4">
+              <span className="text-sm font-medium text-foreground">
                 Hola, Estudiante
               </span>
             </div>
+
+            {/* --- BOTÓN DE TEMA --- */}
+            <ThemeToggle />
+
             <button
               onClick={handleLogout}
-              className="text-nord-11 hover:text-nord-0 hover:bg-nord-11 border border-nord-11 font-bold py-1.5 px-4 rounded-lg transition-all text-sm shadow-[0_0_10px_rgba(191,97,106,0.1)] hover:shadow-[0_0_15px_rgba(191,97,106,0.4)]"
+              className="text-danger hover:text-background hover:bg-danger border border-danger font-bold py-1.5 px-4 rounded-lg transition-all text-sm shadow-[0_0_10px_rgba(191,97,106,0.1)] hover:shadow-[0_0_15px_rgba(191,97,106,0.4)]"
             >
               Salir
             </button>
@@ -70,7 +75,7 @@ export default function StudentLayout() {
 
           {/* --- BOTÓN HAMBURGUESA (Móvil) --- */}
           <button
-            className="md:hidden p-2 text-nord-4 hover:text-nord-8 focus:outline-none"
+            className="md:hidden p-2 text-foreground hover:text-primary focus:outline-none"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             {isMobileMenuOpen ? (
@@ -107,7 +112,7 @@ export default function StudentLayout() {
 
         {/* --- MENÚ DESPLEGABLE (Móvil) --- */}
         {isMobileMenuOpen && (
-          <div className="md:hidden bg-nord-1 border-t border-nord-2 absolute w-full shadow-xl animate-fade-in">
+          <div className="md:hidden bg-surface border-t border-line absolute w-full shadow-xl animate-fade-in">
             <div className="px-4 pt-2 pb-4 space-y-1">
               {navItems.map((item) => (
                 <NavLink
@@ -118,18 +123,18 @@ export default function StudentLayout() {
                   className={({ isActive }) =>
                     `block px-3 py-3 rounded-md text-base font-bold transition-colors ${
                       isActive
-                        ? "bg-nord-8 text-nord-0"
-                        : "text-nord-4 hover:bg-nord-2 hover:text-nord-6"
+                        ? "bg-primary text-background"
+                        : "text-foreground hover:bg-line hover:text-foreground"
                     }`
                   }
                 >
                   {item.name}
                 </NavLink>
               ))}
-              <div className="pt-4 mt-2 border-t border-nord-2">
+              <div className="pt-4 mt-2 border-t border-line">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center justify-center px-3 py-3 text-base font-bold text-nord-11 hover:bg-nord-11 hover:text-nord-0 rounded-md border border-nord-11 transition-colors"
+                  className="w-full flex items-center justify-center px-3 py-3 text-base font-bold text-danger hover:bg-danger hover:text-background rounded-md border border-danger transition-colors"
                 >
                   Cerrar Sesión
                 </button>

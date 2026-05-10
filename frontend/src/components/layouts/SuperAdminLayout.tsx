@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useAuthStore } from "../../store/authStore";
 import { useNotificationStore } from "../../store/notificationStore";
+import ThemeToggle from "../ThemeToggle";
 
 export default function SuperAdminLayout() {
   const navigate = useNavigate();
@@ -55,7 +56,7 @@ export default function SuperAdminLayout() {
       ];
 
   return (
-    <div className="flex h-screen bg-nord-0 text-nord-6 font-sans overflow-hidden">
+    <div className="flex h-screen bg-background text-foreground font-sans overflow-hidden">
       {/* --- OVERLAY PARA MÓVILES --- */}
       {isSidebarOpen && (
         <div
@@ -66,18 +67,18 @@ export default function SuperAdminLayout() {
 
       {/* --- SIDEBAR RESPONSIVO --- */}
       <aside
-        className={`fixed md:relative w-64 h-full bg-nord-1 border-r border-nord-2 flex flex-col shadow-xl z-30 transition-transform duration-300 ease-in-out ${
+        className={`fixed md:relative w-64 h-full bg-surface border-r border-line flex flex-col shadow-xl z-30 transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
-        <div className="p-6 border-b border-nord-2 flex justify-between items-center">
-          <h1 className="text-2xl font-extrabold text-nord-8 tracking-tight">
+        <div className="p-6 border-b border-line flex justify-between items-center">
+          <h1 className="text-2xl font-extrabold text-primary tracking-tight">
             EduPay{" "}
-            <span className="text-sm font-medium text-nord-14 ml-1">SaaS</span>
+            <span className="text-sm font-medium text-success ml-1">SaaS</span>
           </h1>
           {/* Botón cerrar solo en móvil */}
           <button
-            className="md:hidden text-nord-4 hover:text-nord-11 font-bold text-xl"
+            className="md:hidden text-foreground hover:text-danger font-bold text-xl"
             onClick={() => setIsSidebarOpen(false)}
           >
             ×
@@ -85,7 +86,7 @@ export default function SuperAdminLayout() {
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
-          <p className="px-4 text-xs font-bold text-nord-4 uppercase tracking-wider mb-4 mt-2">
+          <p className="px-4 text-xs font-bold text-foreground uppercase tracking-wider mb-4 mt-2">
             Administración Global
           </p>
           {navItems.map((item) => (
@@ -97,8 +98,8 @@ export default function SuperAdminLayout() {
               className={({ isActive }) =>
                 `flex items-center px-4 py-3 rounded-lg font-bold transition-all duration-200 ${
                   isActive
-                    ? "bg-nord-14 text-nord-0 shadow-md translate-x-1"
-                    : "text-nord-4 hover:bg-nord-2 hover:text-nord-6"
+                    ? "bg-success text-background shadow-md translate-x-1"
+                    : "text-foreground hover:bg-line hover:text-foreground"
                 }`
               }
             >
@@ -107,10 +108,10 @@ export default function SuperAdminLayout() {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-nord-2 bg-nord-1/50">
+        <div className="p-4 border-t border-line bg-surface/50">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-nord-11 hover:bg-nord-11 hover:text-nord-0 rounded-lg transition-all border border-transparent hover:border-nord-11 hover:shadow-[0_0_15px_rgba(191,97,106,0.4)]"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-danger hover:bg-danger hover:text-background rounded-lg transition-all border border-transparent hover:border-danger hover:shadow-[0_0_15px_rgba(191,97,106,0.4)]"
           >
             Cerrar Sesión
           </button>
@@ -119,11 +120,11 @@ export default function SuperAdminLayout() {
 
       {/* --- ÁREA DE CONTENIDO PRINCIPAL --- */}
       <main className="flex-1 flex flex-col h-full relative w-full">
-        <header className="h-16 bg-nord-0/90 backdrop-blur-md border-b border-nord-2 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10 w-full shadow-sm">
+        <header className="h-16 bg-background/90 backdrop-blur-md border-b border-line flex items-center justify-between px-4 md:px-8 sticky top-0 z-10 w-full shadow-sm">
           {/* Lado Izquierdo del Header */}
           <div className="flex items-center gap-4">
             <button
-              className="md:hidden p-2 text-nord-4 hover:text-nord-8 focus:outline-none"
+              className="md:hidden p-2 text-foreground hover:text-primary focus:outline-none"
               onClick={() => setIsSidebarOpen(true)}
             >
               <svg
@@ -140,7 +141,7 @@ export default function SuperAdminLayout() {
                 />
               </svg>
             </button>
-            <h2 className="text-base md:text-lg font-semibold text-nord-4 truncate">
+            <h2 className="text-base md:text-lg font-semibold text-foreground truncate">
               {isMaster ? "Consola Maestra SaaS" : "Panel de Administración"}
             </h2>
           </div>
@@ -154,7 +155,7 @@ export default function SuperAdminLayout() {
                   setIsNotifOpen(!isNotifOpen);
                   if (!isNotifOpen) markAsRead();
                 }}
-                className={`relative p-2 transition-colors rounded-full ${isNotifOpen ? "bg-nord-2 text-nord-8" : "text-nord-4 hover:text-nord-13"}`}
+                className={`relative p-2 transition-colors rounded-full ${isNotifOpen ? "bg-line text-primary" : "text-foreground hover:text-primary"}`}
               >
                 <svg
                   className="w-6 h-6"
@@ -170,7 +171,7 @@ export default function SuperAdminLayout() {
                   />
                 </svg>
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-nord-11 text-nord-6 text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse shadow-lg">
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-danger text-foreground text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse shadow-lg">
                     {unreadCount}
                   </span>
                 )}
@@ -183,49 +184,49 @@ export default function SuperAdminLayout() {
                     className="fixed inset-0 z-10"
                     onClick={() => setIsNotifOpen(false)}
                   ></div>
-                  <div className="absolute right-0 mt-3 w-80 bg-nord-1 border border-nord-2 rounded-xl shadow-2xl z-20 overflow-hidden animate-fade-in">
-                    <div className="p-4 border-b border-nord-2 bg-nord-2/30 flex justify-between items-center">
-                      <h4 className="font-bold text-nord-6 text-sm">
+                  <div className="absolute right-0 mt-3 w-80 bg-surface border border-line rounded-xl shadow-2xl z-20 overflow-hidden animate-fade-in">
+                    <div className="p-4 border-b border-line bg-line/30 flex justify-between items-center">
+                      <h4 className="font-bold text-foreground text-sm">
                         Registro de Actividad
                       </h4>
                       <button
                         onClick={clearNotifications}
-                        className="text-[10px] text-nord-11 hover:underline uppercase font-bold transition-all"
+                        className="text-[10px] text-danger hover:underline uppercase font-bold transition-all"
                       >
                         Limpiar
                       </button>
                     </div>
                     <div className="max-h-96 overflow-y-auto custom-scrollbar">
                       {notifications.length === 0 ? (
-                        <div className="p-8 text-center text-nord-3 text-sm italic">
+                        <div className="p-8 text-center text-muted text-sm italic">
                           No hay actividad reciente
                         </div>
                       ) : (
                         notifications.map((n) => (
                           <div
                             key={n.id}
-                            className="p-4 border-b border-nord-2 hover:bg-nord-2/20 transition-colors"
+                            className="p-4 border-b border-line hover:bg-line/20 transition-colors"
                           >
                             <div className="flex justify-between items-start mb-1">
                               <span
                                 className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
                                   n.type === "success"
-                                    ? "bg-nord-14/20 text-nord-14"
+                                    ? "bg-success/20 text-success"
                                     : n.type === "warning"
-                                      ? "bg-nord-11/20 text-nord-11"
-                                      : "bg-nord-8/20 text-nord-8"
+                                      ? "bg-danger/20 text-danger"
+                                      : "bg-primary/20 text-primary"
                                 }`}
                               >
                                 {n.type}
                               </span>
-                              <span className="text-[10px] text-nord-3">
+                              <span className="text-[10px] text-muted">
                                 {new Date(n.timestamp).toLocaleTimeString()}
                               </span>
                             </div>
-                            <p className="text-xs font-bold text-nord-6">
+                            <p className="text-xs font-bold text-foreground">
                               {n.title}
                             </p>
-                            <p className="text-[11px] text-nord-4 leading-relaxed mt-1">
+                            <p className="text-[11px] text-foreground leading-relaxed mt-1">
                               {n.description}
                             </p>
                           </div>
@@ -238,15 +239,16 @@ export default function SuperAdminLayout() {
             </div>
             {/* --- FIN SISTEMA DE NOTIFICACIONES --- */}
 
-            <div className="flex items-center gap-3 border-l border-nord-2 pl-4">
-              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-nord-14 flex items-center justify-center font-bold text-nord-0 shadow-inner text-sm md:text-base">
+            <div className="flex items-center gap-3 border-l border-line pl-4">
+              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-success flex items-center justify-center font-bold text-background shadow-inner text-sm md:text-base">
                 SA
               </div>
-              <span className="hidden md:block text-sm font-bold tracking-wide text-nord-6">
+              <span className="hidden md:block text-sm font-bold tracking-wide text-foreground">
                 Root
               </span>
             </div>
           </div>
+          <ThemeToggle />
         </header>
 
         <div className="flex-1 overflow-auto p-4 md:p-8 relative">

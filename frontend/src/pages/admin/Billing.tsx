@@ -40,13 +40,13 @@ export default function Billing() {
           {!selectedStudent ? (
             <EmptyState message="Busca y selecciona un estudiante para emitir un nuevo cobro." />
           ) : (
-            <div className="bg-nord-1 border border-nord-2 rounded-2xl shadow-lg overflow-hidden animate-in slide-in-from-right-4 duration-300">
+            <div className="bg-surface border border-line rounded-2xl shadow-lg overflow-hidden animate-in slide-in-from-right-4 duration-300">
               <StudentCard student={selectedStudent} />
 
-              <div className="p-6 bg-nord-1 relative">
+              <div className="p-6 bg-surface relative">
                 <button
                   onClick={clearSelection}
-                  className="absolute top-4 right-6 text-nord-11 hover:text-nord-12 text-sm font-bold transition-colors"
+                  className="absolute top-4 right-6 text-danger hover:text-warning text-sm font-bold transition-colors"
                 >
                   Cancelar
                 </button>

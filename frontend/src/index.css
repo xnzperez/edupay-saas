@@ -1,29 +1,58 @@
 @import "tailwindcss";
 
-@theme {
-  /* Paleta Institucional (Confianza y Seguridad) */
-  --color-nord-0: #0f172a; /* Fondo principal (Navy Blue muy oscuro) */
-  --color-nord-1: #1e293b; /* Tarjetas y contenedores (Slate 800) */
-  --color-nord-2: #334155; /* Bordes y Hover (Slate 700) */
-  --color-nord-3: #64748b; /* Textos secundarios y Skeletons */
-  --color-nord-4: #e2e8f0; /* Texto claro base (Slate 200) */
-  --color-nord-5: #f1f5f9; /* Texto claro secundario */
-  --color-nord-6: #ffffff; /* Textos de alto contraste */
+/* 1. Definición de colores dinámicos (El cerebro del Theming) */
+@layer base {
+  :root {
+    /* MODO CLARO (Light Theme - Estilo Stripe) */
+    --bg-base: #f8fafc; /* slate-50 - Fondo general */
+    --bg-surface: #ffffff; /* white - Tarjetas, modales, tablas */
+    --border-subtle: #e2e8f0; /* slate-200 - Bordes suaves */
+    --text-main: #0f172a; /* slate-900 - Títulos y texto fuerte */
+    --text-muted: #64748b; /* slate-500 - Descripciones */
 
-  /* Paleta Cooperativa (Crecimiento y Dinero) */
-  --color-nord-7: #34d399; /* Acentos claros */
-  --color-nord-8: #10b981; /* Color Primario (Verde Esmeralda) */
-  --color-nord-9: #059669; /* Hover del color primario */
-  --color-nord-10: #047857; /* Acentos oscuros */
+    --brand-primary: #2563eb; /* blue-600 - Botones de acción principal */
+    --brand-hover: #1d4ed8; /* blue-700 - Hover de botones */
+  }
 
-  /* Paleta de Estados (Semántica) */
-  --color-nord-11: #ef4444; /* Error / Danger (Rojo vibrante) */
-  --color-nord-12: #f59e0b; /* Warning (Ambar) */
-  --color-nord-13: #3b82f6; /* Pending / Info (Azul claro) */
-  --color-nord-14: #10b981; /* Success / Paid (Mismo Verde Esmeralda) */
-  --color-nord-15: #6366f1; /* Roles / Admin (Indigo) */
+  .dark {
+    /* MODO OSCURO (Dark Theme - Estilo Vercel / Linear) */
+    --bg-base: #020617; /* slate-950 - Fondo abismal (Casi negro) */
+    --bg-surface: #0f172a; /* slate-900 - Elevación sutil para las tarjetas */
+    --border-subtle: #1e293b; /* slate-800 - Bordes ultra oscuros, apenas perceptibles */
+    --text-main: #f8fafc; /* slate-50 - Títulos y texto fuerte */
+    --text-muted: #94a3b8; /* slate-400 - Descripciones */
+
+    --brand-primary: #3b82f6; /* blue-500 - Botones de acción principal */
+    --brand-hover: #60a5fa; /* blue-400 - Hover de botones */
+  }
 }
 
-body {
-  @apply bg-nord-0 text-nord-4 font-sans antialiased;
+/* 2. Inyección al motor de Tailwind v4 */
+@theme {
+  /* Colores Semánticos Base */
+  --color-background: var(--bg-base);
+  --color-surface: var(--bg-surface);
+
+  /* CORRECCIÓN CRÍTICA: Se mapea a 'line' porque Antigravity usó 'border-line' */
+  --color-line: var(--border-subtle);
+
+  /* Colores Semánticos de Texto */
+  --color-foreground: var(--text-main);
+  --color-muted: var(--text-muted);
+
+  /* Colores de Marca */
+  --color-primary: var(--brand-primary);
+  --color-primary-hover: var(--brand-hover);
+
+  /* Colores de Estado (Finanzas) - Estos pueden ser fijos en ambos temas */
+  --color-success: #10b981; /* Verde recaudo */
+  --color-danger: #ef4444; /* Rojo morosos */
+  --color-warning: #f59e0b; /* Ambar pendiente */
+}
+
+/* 3. Estilos globales automáticos */
+@layer base {
+  body {
+    @apply bg-background text-foreground font-sans antialiased transition-colors duration-300;
+  }
 }
