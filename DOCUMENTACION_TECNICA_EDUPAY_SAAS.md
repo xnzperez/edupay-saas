@@ -41,6 +41,7 @@ Para sostener la escalabilidad del lado del cliente, se implementó el patrón a
 *   **Features/Pages:** Separación vertical absoluta de responsabilidades. La lógica de negocio pesada ya no contamina los componentes JSX. Todos los cálculos, validaciones asíncronas y *fetching* de datos están abstraídos dentro de **Custom Hooks** estrictamente tipados.
 *   **Erradicación del tipo `any`:** Cada *response* de Axios, y cada estado de Zustand obedece a interfaces formales de TypeScript sincronizadas mentalmente con los *Structs* de Golang del backend.
 *   **Fragmentación UI:** Módulos gigantes (ej. `AdminDashboard`) fueron rotos en componentes granulares (átomos y moléculas de la UI), logrando reutilización a lo largo del tablero financiero.
+*   **Separación de Vistas por Contexto de Uso:** En el flujo operativo de los Cajeros, se impuso una separación estricta de las responsabilidades de renderizado. Por ejemplo, `StudentsList.tsx` aísla el dominio exclusivo de las matrículas y la gestión del ciclo de vida de los estudiantes, mientras que `Deposit.tsx` se consagra puramente como un componente de operaciones de Caja y recargas transaccionales, evitando el acoplamiento de lógicas mixtas.
 
 ### 2.2 Optimización Radical de Rendimiento (Vercel Best Practices)
 La auditoría de rendimiento (Profiled against Vercel Engineering Standards) impuso directivas críticas:
@@ -53,6 +54,7 @@ La auditoría de rendimiento (Profiled against Vercel Engineering Standards) imp
 Previamente, la aplicación sufría de una dispersión masiva de bloques `try/catch` y llamadas repetitivas de notificaciones (`sileo.error()`) en cada petición. Este *anti-patrón* fue refactorizado mediante **Intercepción de Transporte HTTP**:
 *   **Limpieza y DRY (Don't Repeat Yourself):** Se configuró la instancia global de Axios (`src/services/api.ts`) para atrapar todos los códigos de estado `4xx` y `5xx`.
 *   El interceptor extrae semánticamente el mensaje de error normalizado provisto por la API REST de Go, y despliega **globalmente** la micro-notificación de error de la librería Sileo, liberando a los componentes React de preocuparse por manejar el fracaso de red.
+*   **Arquitectura de Feedback Dual (Sileo + Zustand):** El sistema consolida la coexistencia estratégica de dos motores de estado. El store global de `Zustand` se conserva exclusivamente para mantener el historial persistente y la bitácora auditable de los eventos en el cliente. Paralelamente, `Sileo` gestiona íntegramente los *Toasts* de feedback temporal e inmediato en pantalla. Esta separación de intereses garantiza que las notificaciones efímeras no polucionen el estado de auditoría.
 *   **Manejo determinista del `401 Unauthorized`:** Si el backend revoca o expira el JWT, el interceptor fuerza la mutación asíncrona de Zustand (limpiando los tokens de LocalStorage) y despacha un *hard-redirect* hacia `/login`, impidiendo que peticiones huérfanas sigan consumiendo banda ancha en el DOM inerte.
 
 ---
@@ -70,6 +72,7 @@ La asincronía en Golang es barata (cada Goroutine cuesta < 2KB), pero si no se 
 Aplicamos el patrón militar de Defensa en Profundidad, estratificando las validaciones para que la intrusión falle estrepitosamente en la capa más externa posible (*Fail-Fast Principle*).
 
 *   **Capa 1: Edge Validation (Frontera HTTP).** No confiamos ciegamente en las rutas. Por ejemplo, en el `PayInstallmentHandler`, el parámetro `:id` extraído mediante `c.Params("id")` es auditado contra una Expresión Regular de formato **UUIDv4**. Si un actor malicioso inyecta texto aleatorio o inyecciones SQL ciegas, el *Request* rebota con un `400 Bad Request` antes de que siquiera se adquiera una conexión del *Connection Pool* de base de datos.
+*   **Validación de Autenticación (`LoginHandler`):** La validación del estado del usuario no delega responsabilidades a la capa de frontend. La propiedad `is_active` es extraída e inspeccionada directamente desde PostgreSQL en el momento del login. Si se detecta un usuario suspendido (`is_active = false`), el servidor interrumpe la ejecución con un rechazo inmediato de estado `403 Forbidden`, bloqueando preventivamente el costoso procesamiento de emisión del token JWT.
 *   **Capa 2: Idempotencia y Lógica de Negocio Core.** Cuando un pago ingresa, validamos estrictamente que la cuota (`installment`) se encuentre en estado `PENDING`. Si ya es `PAID`, se aborta inmediatamente (Idempotencia). Aseguramos que la Billetera tenga saldo `>=` a la deuda (Integridad).
 *   **Robustez de Pánico (`recover`):** En transacciones complejas, usamos `defer` con wrappers transaccionales que implementan `recover()`. Si un puntero nulo (Nil Pointer Dereference) causa un *Panic* en tiempo de ejecución, nuestra arquitectura captura el crash, efectúa el `tx.Rollback()` obligatorio, y retorna un error `500` formal al cliente, manteniendo el servidor de Fiber 100% disponible.
 *   **Go 1.13+ Error Wrapping:** Usamos `fmt.Errorf("...: %w", err)` para encadenar trazas de errores, permitiendo auditorías profundas desde el Handler hasta el query SQL original sin perder el contexto.
@@ -78,6 +81,13 @@ Aplicamos el patrón militar de Defensa en Profundidad, estratificando las valid
 *   Transición completa de endpointsRPC/Verbos (`/pagar`, `/crearCuota`) a un diseño **Estrictamente Orientado a Recursos** (`POST /installments/:id/payments`, `POST /installments`).
 *   Los códigos de estado HTTP se devuelven con precisión de cirujano: `200 OK` para consultas, `201 Created` exclusivo para génesis de registros y pagos, `403 Forbidden` en barreras de rol RBAC, y `409 Conflict` ante colisiones de estado.
 *   La API está unificada mediante **Swagger/OpenAPI**. El uso de `swaggo/swag` extrae los comentarios del código Go en build-time, permitiendo la generación dinámica de una UI de postman interactiva en `/swagger`.
+
+### 3.4 Modelo de Dominio y Flujos Transaccionales (SuperAdmin y Cajeros)
+El diseño arquitectónico establece barreras sólidas de responsabilidad operativa y estricta integridad en las mutaciones de estado, segmentadas por roles:
+
+*   **Módulo de SuperAdmin Local:** Gobierna el ciclo de vida (CRUD) de los Cajeros (Admins) de cada institución. Para la revocación de accesos, se instrumenta un mecanismo de "Suspensión" a través de una mutación `PATCH` sobre el estado `is_active`. Este enfoque de *Soft Delete* lógico cancela las credenciales de ingreso del Cajero sin incurrir en la destrucción física del registro, preservando de manera inviolable la integridad de la auditoría y los historiales de caja.
+*   **Módulo de Cajero y Matrículas bajo Transacción ACID:** El registro de nuevos alumnos (`EnrollStudentHandler`) es tratado como una operación financiera crítica. El flujo opera rigurosamente bajo una transacción atómica (`db.Beginx()`). Esta directiva garantiza la creación paralela y unificada del usuario en la tabla `users` y su respectiva billetera (con saldo `0`) en la tabla `wallets`. Si ocurre el mínimo fallo (por ejemplo, en la instanciación de la billetera virtual), la transacción invoca un *rollback* completo, descartando al usuario e imposibilitando estados huérfanos o inconsistencias de datos.
+*   **Gestión Evolutiva del Estudiante:** La API expone capacidades para que el Cajero mantenga la exactitud del directorio mediante la edición de datos básicos (`UpdateStudentHandler`) y conserve facultades de administración del ciclo de vida a través de la suspensión o reactivación explícita de las cuentas estudiantiles (`UpdateStudentStatusHandler`).
 
 ---
 

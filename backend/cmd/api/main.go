@@ -80,7 +80,9 @@ func main() {
 
 	// --- ZONA PÚBLICA DEL TENANT (No requiere Token) ---
 	api.Post("/users/register", user.RegisterHandler(db))
-	api.Post("/users/login", user.LoginHandler(db))
+
+	// Inyectamos el Rate Limiter justo antes del Handler de login
+	api.Post("/users/login", auth.LoginRateLimiter(), user.LoginHandler(db))
 
 	// --- BARRERA DE SEGURIDAD JWT ---
 	// Todo lo que declaremos de aquí hacia abajo exigirá estar logueado (Token Bearer)
@@ -105,8 +107,12 @@ func main() {
 	// 2. RUTAS DE ADMINISTRADOR (Solo Cajeros)
 	// ==========================================
 	api.Get("/users/search", auth.RequireRole("ADMIN"), user.SearchStudentHandler(db))
+	api.Get("/admin/students", auth.RequireRole("ADMIN"), student.GetStudentsHandler(db))
+	api.Post("/admin/students", auth.RequireRole("ADMIN"), student.EnrollStudentHandler(db))
 	api.Post("/wallets/:user_id/deposit", auth.RequireRole("ADMIN"), wallet.DepositHandler(db, validate))
 	api.Get("/admin/transactions", auth.RequireRole("ADMIN"), wallet.GetAdminTransactions(db))
+	api.Patch("/admin/students/:id", auth.RequireRole("ADMIN"), student.UpdateStudentHandler(db))
+	api.Patch("/admin/students/:id/status", auth.RequireRole("ADMIN"), student.UpdateStudentStatusHandler(db))
 
 	// 💼 Módulo del Cajero (Facturación y Deudas)
 	api.Get("/billing/students", auth.RequireRole("ADMIN"), billing.SearchStudentsHandler(db))

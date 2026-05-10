@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -89,4 +91,21 @@ func Protected() fiber.Handler {
 		// 7. ¡Todo en orden! El guardia abre la puerta.
 		return c.Next()
 	}
+}
+
+// LoginRateLimiter implementa el escudo contra fuerza bruta en el endpoint de autenticación.
+func LoginRateLimiter() fiber.Handler {
+	return limiter.New(limiter.Config{
+		Max:        5,               // 5 intentos
+		Expiration: 1 * time.Minute, // por cada minuto
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return c.IP()
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"error":   "Too many login attempts",
+				"message": "Límite excedido. Intente de nuevo en 1 minuto.",
+			})
+		},
+	})
 }

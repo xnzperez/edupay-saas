@@ -7,6 +7,7 @@ import {
 } from "../../validations/tenant";
 import { tenantService } from "../../services/tenant";
 import { useNotificationStore } from "../../store/notificationStore";
+import { sileo } from "sileo";
 
 export default function CreateTenant() {
   const [feedback, setFeedback] = useState<{
@@ -49,6 +50,10 @@ export default function CreateTenant() {
         `Se ha registrado correctamente la institución ${data.name} en el sistema.`,
         "success",
       );
+      sileo.success({
+        title: "Nueva Universidad",
+        description: `Se ha registrado correctamente la institución ${data.name} en el sistema.`,
+      });
 
       reset(); // Limpiamos el formulario tras el éxito
     } catch (error: any) {

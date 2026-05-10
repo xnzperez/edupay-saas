@@ -5,6 +5,7 @@ import {
   type Tenant,
 } from "../../services/tenant";
 import { useNotificationStore } from "../../store/notificationStore";
+import { sileo } from "sileo";
 
 export default function TenantsList() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -36,12 +37,20 @@ export default function TenantsList() {
         `La ${updatedTenant.name} ha sido ${newStatus ? "activada" : "suspendida"} exitosamente.`,
         newStatus ? "success" : "warning",
       );
+      sileo.success({
+        title: "Estado Actualizado",
+        description: `La ${updatedTenant.name} ha sido ${newStatus ? "activada" : "suspendida"} exitosamente.`,
+      });
     } catch (error) {
       addNotification(
         "Error",
         "No se pudo actualizar el estado de la universidad.",
         "warning",
       );
+      sileo.error({
+        title: "Error",
+        description: "No se pudo actualizar el estado de la universidad.",
+      });
     } finally {
       setIsToggling(false);
     }

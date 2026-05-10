@@ -5,6 +5,7 @@ import {
   type MyTenant as MyTenantType,
 } from "../../services/tenant";
 import { useNotificationStore } from "../../store/notificationStore";
+import { sileo } from "sileo";
 
 export default function MyTenant() {
   const [tenant, setTenant] = useState<MyTenantType | null>(null);
@@ -30,6 +31,10 @@ export default function MyTenant() {
           "No se pudo cargar la información de la universidad.",
           "error",
         );
+        sileo.error({
+          title: "Error",
+          description: "No se pudo cargar la información de la universidad.",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -50,12 +55,20 @@ export default function MyTenant() {
         "Configuración de la universidad guardada con éxito.",
         "success",
       );
+      sileo.success({
+        title: "Actualizado",
+        description: "Configuración de la universidad guardada con éxito.",
+      });
     } catch (error) {
       addNotification(
         "Error",
         "Fallo al actualizar la configuración.",
         "error",
       );
+      sileo.error({
+        title: "Error",
+        description: "Fallo al actualizar la configuración.",
+      });
     } finally {
       setIsSaving(false);
     }

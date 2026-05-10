@@ -6,6 +6,7 @@ import {
   type LocalAdmin,
 } from "../../services/localAdmin";
 import { useNotificationStore } from "../../store/notificationStore";
+import { sileo } from "sileo";
 
 export default function AdminsList() {
   const [admins, setAdmins] = useState<LocalAdmin[]>([]);
@@ -32,6 +33,10 @@ export default function AdminsList() {
         "No se pudo obtener la lista de cajeros.",
         "error",
       );
+      sileo.error({
+        title: "Error",
+        description: "No se pudo obtener la lista de cajeros.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -47,6 +52,7 @@ export default function AdminsList() {
     try {
       await createLocalAdmin(formData);
       addNotification("Éxito", "Cajero registrado correctamente.", "success");
+      sileo.success({ title: "Éxito", description: "Cajero registrado correctamente." });
       setIsModalOpen(false);
       setFormData({ full_name: "", email: "", password: "" });
       fetchAdmins();
@@ -56,6 +62,10 @@ export default function AdminsList() {
         "El correo ya está registrado o los datos son inválidos.",
         "error",
       );
+      sileo.error({
+        title: "Error",
+        description: "El correo ya está registrado o los datos son inválidos.",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -69,9 +79,14 @@ export default function AdminsList() {
         `Cajero ${!currentStatus ? "activado" : "suspendido"}.`,
         "success",
       );
+      sileo.success({
+        title: "Actualizado",
+        description: `Cajero ${!currentStatus ? "activado" : "suspendido"}.`,
+      });
       fetchAdmins();
     } catch (error) {
       addNotification("Error", "No se pudo cambiar el estado.", "error");
+      sileo.error({ title: "Error", description: "No se pudo cambiar el estado." });
     }
   };
 
