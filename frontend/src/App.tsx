@@ -30,25 +30,21 @@ import MyTenant from "./pages/superadmin/MyTenant";
 import AdminsList from "./pages/superadmin/AdminsList";
 
 export default function App() {
-  // EXTRAEMOS EL TEMA: Esto hace que App.tsx se re-renderice al cambiar el tema
-  useThemeStore((state) => state.theme);
+  // 1. Guardamos el tema en una constante para usarla abajo
+  const theme = useThemeStore((state) => state.theme);
 
   return (
     <BrowserRouter>
-      {/* --- CONFIGURACIÓN GLOBAL "PREMIUM DARK" PARA SILEO --- */}
+      {/* 2. Pasamos el theme dinámicamente */}
       <Toaster
         position="top-center"
-        theme="dark" // Forzamos el tema oscuro para las notificaciones
+        theme={theme} // Ahora es reactivo: 'light' o 'dark'
         options={{
-          fill: "#0f172a", // Usamos tu azul slate-900 profundo de fondo
           roundness: 16,
+          // Eliminamos el 'fill' hardcoded para que Sileo maneje el contraste
           styles: {
-            // Forzamos blanco puro (!) para que resalte en cualquier tema
-            title: "text-white! font-bold!",
-            description: "text-white/70! font-medium!",
-            badge: "bg-white/10!", // Circulito del icono traslúcido
-            button:
-              "bg-primary/20! hover:bg-primary/30! text-primary! font-bold!",
+            title: "font-bold!",
+            description: "font-medium opacity-80!",
           },
         }}
       />
@@ -57,7 +53,6 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
 
-        {/* ... Resto de tus rutas ... */}
         <Route element={<ProtectedRoute />}>
           <Route element={<RoleRole allowedRole="STUDENT" />}>
             <Route path="/student" element={<StudentLayout />}>
