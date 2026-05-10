@@ -16,6 +16,7 @@ import (
 
 	"github.com/xnzperez/edupay-saas/internal/auth"
 	"github.com/xnzperez/edupay-saas/internal/billing"
+	"github.com/xnzperez/edupay-saas/internal/contacts"
 	"github.com/xnzperez/edupay-saas/internal/payment"
 	"github.com/xnzperez/edupay-saas/internal/store"
 	"github.com/xnzperez/edupay-saas/internal/tenant"
@@ -95,6 +96,12 @@ func main() {
 	api.Get("/billing/installments/:id/receipt", billing.DownloadReceiptHandler(db))
 	api.Post("/wallets/transfer", wallet.TransferHandler(db, validate))
 	api.Post("/payments/preference", payment.CreatePreferenceHandler())
+
+	// 📕 Módulo de Contactos (NUEVO)
+	api.Get("/contacts", contacts.GetContactsHandler(db))
+	api.Post("/contacts", contacts.AddContactHandler(db))
+	api.Get("/contacts/recent", contacts.GetRecentContactsHandler(db))
+	api.Delete("/contacts/:id", contacts.RemoveContactHandler(db))
 
 	// Módulo Tienda (Pagos con Saldo)
 	api.Post("/store/buy", store.PurchaseHandler(db))

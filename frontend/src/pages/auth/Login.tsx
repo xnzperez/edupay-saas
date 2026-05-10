@@ -8,29 +8,42 @@ import { loginUser } from "../../services/auth";
 import { useAuthStore } from "../../store/authStore";
 import { loginSchema, type LoginFormValues } from "../../validations/auth";
 
+// Definimos el array de imágenes estáticas
+const CAROUSEL_IMAGES = [
+  "/modern-university.avif",
+  "/data-center-abstract.avif",
+  "/fintech.avif",
+];
+
 export default function Login() {
   const navigate = useNavigate();
   const setToken = useAuthStore((state) => state.setToken);
-
-  // EXTRAEMOS AL USUARIO DE ZUSTAND
   const user = useAuthStore((state) => state.user);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // --- LÓGICA DEL CARRUSEL ---
+  useEffect(() => {
+    // Cambia la imagen cada 5 segundos
+    const interval = setInterval(() => {
+      setCurrentImageIndex(
+        (prevIndex) => (prevIndex + 1) % CAROUSEL_IMAGES.length,
+      );
+    }, 5000);
+
+    return () => clearInterval(interval); // Cleanup para evitar fugas de memoria
+  }, []);
 
   // --- EL VIGILANTE DE LA PUERTA ---
   useEffect(() => {
-    // Si ya hay un usuario logueado, lo sacamos del login automáticamente
     if (user) {
-      if (user.role === "SUPERADMIN") {
+      if (user.role === "SUPERADMIN")
         navigate("/superadmin/create-tenant", { replace: true });
-      } else if (user.role === "ADMIN") {
-        navigate("/admin", { replace: true });
-      } else {
-        navigate("/student", { replace: true });
-      }
+      else if (user.role === "ADMIN") navigate("/admin", { replace: true });
+      else navigate("/student", { replace: true });
     }
   }, [user, navigate]);
-  // ------------------------------------------
 
   const {
     register,
@@ -42,111 +55,151 @@ export default function Login() {
 
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
-
     try {
       const response = await loginUser(data);
       setToken(response.token);
-
       sileo.success({
         title: "¡Acceso concedido!",
         description: response.message,
       });
-
       const role = useAuthStore.getState().user?.role;
-      if (role === "SUPERADMIN") {
-        navigate("/superadmin/create-tenant");
-      } else if (role === "ADMIN") {
-        navigate("/admin");
-      } else {
-        navigate("/student");
-      }
+      if (role === "SUPERADMIN") navigate("/superadmin/create-tenant");
+      else if (role === "ADMIN") navigate("/admin");
+      else navigate("/student");
     } catch (error: any) {
+      // El manejo de errores ya lo hace el interceptor o la vista
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen bg-background font-sans">
-      {/* --- LADO IZQUIERDO: Branding y Marketing (Oculto en celulares) --- */}
-      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-primary to-primary-hover flex-col justify-between p-16 text-background relative overflow-hidden">
-        {/* Círculos decorativos de fondo para darle toque premium */}
-        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-white opacity-10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-black opacity-10 rounded-full blur-3xl"></div>
+    <div className="flex min-h-screen bg-background font-sans selection:bg-primary/30">
+      {/* --- LADO IZQUIERDO: Marketing & Imagen --- */}
+      <div className="hidden lg:flex w-1/2 relative bg-surface overflow-hidden border-r border-line">
+        {/* Fondo de Cuadrícula */}
+        <div
+          className="absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.05]"
+          style={{
+            backgroundImage:
+              "radial-gradient(var(--color-foreground) 1px, transparent 1px)",
+            backgroundSize: "24px 24px",
+          }}
+        ></div>
 
-        <div className="relative z-10">
-          <h1 className="text-5xl font-extrabold tracking-tight">EduPay</h1>
-          <p className="mt-6 text-xl font-medium opacity-90 leading-relaxed max-w-md">
-            El motor financiero inteligente. Gestiona pagos, transacciones y
-            deudas con precisión milimétrica.
-          </p>
-        </div>
+        <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-primary/10 to-transparent z-0"></div>
 
-        {/* Tarjeta Glassmorphism (Cristal) para presumir la arquitectura */}
-        <div className="relative z-10 space-y-6">
-          <div className="p-8 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 shadow-xl">
-            <p className="text-lg font-semibold leading-relaxed">
-              "La seguridad no es una opción, es el núcleo. EduPay aísla los
-              datos a nivel de motor de base de datos."
+        <div className="relative z-10 flex flex-col justify-between h-full p-16 w-full">
+          {/* Header Izquierdo */}
+          <div>
+            <div className="inline-flex items-center gap-3 bg-surface border border-line px-4 py-2 rounded-full shadow-sm mb-8">
+              <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+              <span className="text-xs font-bold text-foreground tracking-wide uppercase">
+                Sistema En Línea
+              </span>
+            </div>
+            <h1 className="text-5xl lg:text-6xl font-black tracking-tighter text-foreground leading-[1.1]">
+              Finanzas <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-hover">
+                Institucionales.
+              </span>
+            </h1>
+            <p className="mt-6 text-lg text-muted font-medium max-w-md leading-relaxed">
+              EduPay SaaS centraliza, automatiza y asegura cada transacción
+              universitaria mediante arquitectura distribuida.
             </p>
-            <div className="mt-6 flex items-center gap-4">
-              <div className="w-10 h-10 bg-background rounded-full flex items-center justify-center">
-                <span className="text-primary font-bold">✓</span>
+          </div>
+
+          {/* CONTENEDOR DEL CARRUSEL DE IMÁGENES */}
+          <div className="flex-1 w-full my-8 relative rounded-2xl overflow-hidden border border-line/50 shadow-2xl bg-surface group">
+            {/* Capa de oscurecimiento superpuesta para mejorar lectura si hubiera texto encima y darle toque premium */}
+            <div className="absolute inset-0 bg-primary/10 group-hover:bg-transparent transition-colors duration-700 z-10 mix-blend-multiply"></div>
+
+            {CAROUSEL_IMAGES.map((src, index) => (
+              <img
+                key={src}
+                src={src}
+                alt={`EduPay Feature ${index + 1}`}
+                // Optimizaciones de carga
+                fetchpriority={index === 0 ? "high" : "auto"}
+                loading={index === 0 ? "eager" : "lazy"}
+                decoding="async"
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
+                  index === currentImageIndex ? "opacity-100" : "opacity-0"
+                }`}
+              />
+            ))}
+          </div>
+
+          {/* Footer Izquierdo (Glassmorphism) */}
+          <div className="p-6 bg-surface/50 backdrop-blur-xl border border-line rounded-2xl shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-background rounded-xl border border-line flex items-center justify-center shadow-sm">
+                <svg
+                  className="w-6 h-6 text-primary"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                  ></path>
+                </svg>
               </div>
               <div>
-                <p className="text-sm font-bold opacity-90">
-                  Arquitectura Multi-Tenant
+                <p className="text-sm font-bold text-foreground">
+                  Aislamiento de Datos Nivel 4
                 </p>
-                <p className="text-xs opacity-75">Azure Cloud Services</p>
+                <p className="text-xs text-muted mt-1">
+                  Transacciones ACID garantizadas.
+                </p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* --- LADO DERECHO: Formulario de Autenticación --- */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 relative">
-        <div className="w-full max-w-md space-y-8">
-          <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold text-foreground">
-              Bienvenido al sistema
+      {/* --- LADO DERECHO: Formulario (Minimalista) --- */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 relative bg-background">
+        <div className="w-full max-w-md space-y-10">
+          <div className="text-center lg:text-left space-y-2">
+            <h2 className="text-3xl font-bold text-foreground tracking-tight">
+              Acceso al Panel
             </h2>
-            <p className="mt-3 text-sm text-foreground">
-              Ingresa tus credenciales institucionales para acceder a tu panel
-              de control.
+            <p className="text-sm text-muted">
+              Ingresa tus credenciales institucionales seguras.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-8">
-            {/* Input Correo */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground tracking-wide">
-                CORREO INSTITUCIONAL
+              <label className="text-xs font-bold text-muted tracking-wider uppercase">
+                Correo Electrónico
               </label>
-              <div className="relative">
-                <input
-                  type="email"
-                  {...register("email")}
-                  placeholder="usuario@campusucc.edu.co"
-                  className={`w-full px-4 py-3.5 bg-surface border rounded-xl text-foreground placeholder-muted focus:ring-4 focus:outline-none transition-all duration-200 ${
-                    errors.email
-                      ? "border-danger focus:ring-danger/20"
-                      : "border-line focus:border-primary focus:ring-primary/20"
-                  }`}
-                />
-              </div>
+              <input
+                type="email"
+                {...register("email")}
+                placeholder="usuario@campusucc.edu.co"
+                className={`w-full px-4 py-3.5 bg-surface border rounded-xl text-foreground placeholder-muted/50 focus:ring-4 focus:outline-none transition-all duration-200 ${
+                  errors.email
+                    ? "border-danger focus:ring-danger/20"
+                    : "border-line focus:border-primary focus:ring-primary/20"
+                }`}
+              />
               {errors.email && (
-                <p className="text-danger text-xs font-semibold animate-pulse">
+                <p className="text-danger text-xs font-semibold">
                   {errors.email.message}
                 </p>
               )}
             </div>
 
-            {/* Input Contraseña */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-foreground tracking-wide">
-                  CONTRASEÑA
+                <label className="text-xs font-bold text-muted tracking-wider uppercase">
+                  Contraseña
                 </label>
                 <a
                   href="#"
@@ -155,68 +208,33 @@ export default function Login() {
                   ¿Olvidaste tu contraseña?
                 </a>
               </div>
-              <div className="relative">
-                <input
-                  type="password"
-                  {...register("password")}
-                  placeholder="••••••••"
-                  className={`w-full px-4 py-3.5 bg-surface border rounded-xl text-foreground placeholder-muted focus:ring-4 focus:outline-none transition-all duration-200 ${
-                    errors.password
-                      ? "border-danger focus:ring-danger/20"
-                      : "border-line focus:border-primary focus:ring-primary/20"
-                  }`}
-                />
-              </div>
+              <input
+                type="password"
+                {...register("password")}
+                placeholder="••••••••"
+                className={`w-full px-4 py-3.5 bg-surface border rounded-xl text-foreground placeholder-muted/50 focus:ring-4 focus:outline-none transition-all duration-200 ${
+                  errors.password
+                    ? "border-danger focus:ring-danger/20"
+                    : "border-line focus:border-primary focus:ring-primary/20"
+                }`}
+              />
               {errors.password && (
-                <p className="text-danger text-xs font-semibold animate-pulse">
+                <p className="text-danger text-xs font-semibold">
                   {errors.password.message}
                 </p>
               )}
             </div>
 
-            {/* Botón Submit con Spinner de carga */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-4 px-4 border border-transparent rounded-xl shadow-lg text-sm font-extrabold text-background bg-primary hover:bg-primary-hover focus:outline-none focus:ring-4 focus:ring-primary/30 disabled:opacity-70 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5 active:translate-y-0"
+              className="w-full flex justify-center py-4 px-4 border border-transparent rounded-xl shadow-lg shadow-primary/20 text-sm font-bold text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-4 focus:ring-primary/30 disabled:opacity-70 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5"
             >
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <svg
-                    className="animate-spin h-5 w-5 text-background"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Estableciendo conexión segura...
-                </span>
-              ) : (
-                "INICIAR SESIÓN"
-              )}
+              {isLoading
+                ? "Estableciendo conexión segura..."
+                : "Iniciar Sesión Segura"}
             </button>
           </form>
-
-          {/* Microcopy corporativo para impresionar jurados */}
-          <div className="pt-8 mt-8 border-t border-line/50">
-            <p className="text-center text-xs text-muted font-medium">
-              Protegido por políticas de Row-Level Security (RLS). <br />
-              Toda comunicación viaja encriptada mediante TLS.
-            </p>
-          </div>
         </div>
       </div>
     </div>
