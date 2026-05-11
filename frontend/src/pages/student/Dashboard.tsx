@@ -6,6 +6,7 @@ import type { WalletDashboardResponse } from "../../services/wallet";
 import {
   getMyInstallments,
   payInstallment,
+  billingService, // 1. IMPORTACIÓN AGREGADA
 } from "../../services/billing";
 import { createPaymentPreference } from "../../services/payment";
 
@@ -31,6 +32,9 @@ export default function Dashboard() {
   const [debts, setDebts] = useState<Installment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [payingId, setPayingId] = useState<string | null>(null);
+  
+  // 2. NUEVO ESTADO PARA EL PDF
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const fetchDashboardData = async (currentPage: number) => {
     try {
@@ -67,7 +71,6 @@ export default function Dashboard() {
     });
   }, [wallet, txFilter]);
 
-
   const handlePayDebt = async (installmentId: string, amount: number) => {
     if (!wallet || wallet.current_balance < amount) {
       sileo.error({
@@ -87,6 +90,25 @@ export default function Dashboard() {
     } catch (error: any) {
     } finally {
       setPayingId(null);
+    }
+  };
+
+  // 3. NUEVA FUNCIÓN MANEJADORA DEL PDF
+  const handleDownloadReceipt = async (installmentId: string) => {
+    setDownloadingId(installmentId);
+    try {
+      await billingService.downloadReceipt(installmentId);
+      sileo.success({
+        title: "Documento Generado",
+        description: "Tu estado de cuenta se ha descargado exitosamente.",
+      });
+    } catch (error) {
+      sileo.error({
+        title: "Error de Reportes",
+        description: "El servidor de archivos no respondió. Intenta en unos minutos.",
+      });
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -450,6 +472,8 @@ export default function Dashboard() {
                     <p className="text-2xl font-black text-foreground tabular-nums mb-4">
                       ${debt.amount.toLocaleString()}
                     </p>
+                    
+                    {/* 4. BLOQUE DE BOTONES CON EL PDF */}
                     <div className="flex flex-col gap-2">
                       <button
                         onClick={() => handlePayDebt(debt.id, debt.amount)}
@@ -458,7 +482,18 @@ export default function Dashboard() {
                       >
                         {payingId === debt.id ? "PROCESANDO..." : "PAGAR AHORA"}
                       </button>
+
+                      <button
+                        onClick={() => handleDownloadReceipt(debt.id)}
+                        disabled={downloadingId === debt.id}
+                        className="w-full bg-nord-2 hover:bg-nord-3 text-nord-6 font-bold py-2.5 rounded-xl transition-all disabled:opacity-40 text-xs flex items-center justify-center gap-2"
+                      >
+                        {downloadingId === debt.id
+                          ? "GENERANDO PDF..."
+                          : "📄 DESCARGAR COMPROBANTE"}
+                      </button>
                     </div>
+
                   </div>
                 ))}
               </div>
