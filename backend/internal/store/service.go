@@ -22,17 +22,18 @@ func ProcessPurchase(db *sqlx.DB, userID string, itemID string) (string, string,
 	defer tx.Rollback()
 
 	// 3. Bloqueo de fila (FOR UPDATE) + JOIN con la tabla users
-	// Extraemos la billetera y, en la misma consulta, los datos del dueño
 	var currentBalance float64
 	var walletID string
 	var studentName string
 	var studentEmail string
+	var tenantID string // NUEVO: Variable para capturar el ID de la universidad
 
+	// CORRECCIÓN 1: Agregamos w.tenant_id al SELECT
 	err = tx.QueryRowx(`
-		SELECT w.id, w.current_balance, u.full_name, u.email 
+		SELECT w.id, w.current_balance, u.full_name, u.email, w.tenant_id
 		FROM wallets w
 		JOIN users u ON w.user_id = u.id
-		WHERE w.user_id = $1 FOR UPDATE`, userID).Scan(&walletID, &currentBalance, &studentName, &studentEmail)
+		WHERE w.user_id = $1 FOR UPDATE`, userID).Scan(&walletID, &currentBalance, &studentName, &studentEmail, &tenantID)
 
 	if err != nil {
 		return "", "", fmt.Errorf("error obteniendo datos transaccionales: %v", err)
@@ -50,6 +51,16 @@ func ProcessPurchase(db *sqlx.DB, userID string, itemID string) (string, string,
 		WHERE id = $2`, item.Price, walletID)
 	if err != nil {
 		return "", "", fmt.Errorf("error descontando el saldo: %v", err)
+	}
+
+	// 5.5 Registro de Auditoría (El Recibo en el historial)
+	// CORRECCIÓN 2: Incluimos tenant_id en el INSERT
+	_, err = tx.Exec(`
+		INSERT INTO wallet_txs (wallet_id, tenant_id, tx_type, amount, reference) 
+		VALUES ($1, $2, 'PURCHASE', $3, $4)`,
+		walletID, tenantID, item.Price, fmt.Sprintf("Compra en tienda: %s", item.Name))
+	if err != nil {
+		return "", "", fmt.Errorf("error registrando la transacción en el historial: %v", err)
 	}
 
 	// 6. Confirmación (Commit)
