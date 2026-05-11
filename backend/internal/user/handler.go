@@ -87,7 +87,6 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-// LoginHandler verifica credenciales y emite un JWT
 // LoginHandler verifica credenciales y emite un JWT.
 // @Summary Iniciar sesión en el sistema
 // @Description Autentica a un usuario validando sus credenciales y devuelve un token JWT.
@@ -107,36 +106,31 @@ func LoginHandler(db *sqlx.DB) fiber.Handler {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "JSON inválido"})
 		}
 
-		// Obtenemos el tenantID del middleware
-		tenantID, ok := c.Locals("tenant_id").(string)
-		if !ok || tenantID == "" {
-			tenantID = ""
+		// Obtenemos el tenantID del middleware (lo que manda el frontend)
+		requestTenantID, ok := c.Locals("tenant_id").(string)
+		if !ok || requestTenantID == "" {
+			requestTenantID = ""
 		}
 
 		var user struct {
 			ID           string  `db:"id"`
 			PasswordHash string  `db:"password_hash"`
 			Role         string  `db:"role"`
-			TenantID     *string `db:"tenant_id"`
-			IsActive     bool    `db:"is_active"` // NUEVO: Capturamos el estado de la base de datos
+			TenantID     *string `db:"tenant_id"` // Aquí lo capturaremos de la BD
+			IsActive     bool    `db:"is_active"`
 		}
 
 		var err error
 
-		// EXCEPCIÓN SUPER ADMIN
+		// EXCEPCIÓN SUPER ADMIN ROOT QUEMADO
 		if req.Email == "root@edupay.saas" {
-			// NUEVO: Agregamos is_active al SELECT
 			query := `SELECT id, password_hash, role, tenant_id, is_active FROM users WHERE email = $1`
 			err = db.Get(&user, query, req.Email)
-
-			if err == nil && user.TenantID != nil {
-				tenantID = *user.TenantID
-			}
 		} else {
-			// FLUJO NORMAL: Usuarios de universidades (Cajeros, Estudiantes)
-			err = database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
-				// NUEVO: Agregamos is_active al SELECT
-				query := `SELECT id, password_hash, role, is_active FROM users WHERE email = $1`
+			// FLUJO NORMAL: Usuarios reales de base de datos
+			err = database.RunInTenantTx(db, requestTenantID, func(tx *sqlx.Tx) error {
+				// CORRECCIÓN CLAVE 1: Agregamos tenant_id al SELECT
+				query := `SELECT id, password_hash, role, tenant_id, is_active FROM users WHERE email = $1`
 				return tx.Get(&user, query, req.Email)
 			})
 		}
@@ -145,14 +139,20 @@ func LoginHandler(db *sqlx.DB) fiber.Handler {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Credenciales inválidas"})
 		}
 
-		// === NUEVA BARRERA DE SEGURIDAD: VALIDACIÓN DE ESTADO ===
+		// CORRECCIÓN CLAVE 2: La Base de Datos es la única fuente de verdad.
+		// Sobrescribimos el ID del frontend con el ID real de Postgres.
+		var finalTenantID string
+		if user.TenantID != nil {
+			finalTenantID = *user.TenantID
+		}
+
+		// === BARRERA DE SEGURIDAD: VALIDACIÓN DE ESTADO ===
 		if !user.IsActive {
 			fmt.Println("❌ Intento de acceso bloqueado: Cuenta suspendida ->", req.Email)
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"error": "Tu cuenta ha sido suspendida. Contacta al administrador de tu universidad.",
 			})
 		}
-		// =========================================================
 
 		// 2. Comparamos la contraseña en texto plano con el hash de la BD
 		if req.Email == "root@edupay.saas" && req.Password == "root123" {
@@ -162,10 +162,10 @@ func LoginHandler(db *sqlx.DB) fiber.Handler {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Credenciales inválidas"})
 		}
 
-		// 3. Generamos el JWT
+		// 3. Generamos el JWT usando el finalTenantID de la BD
 		claims := jwt.MapClaims{
 			"sub":       user.ID,
-			"tenant_id": tenantID,
+			"tenant_id": finalTenantID, // <--- AHORA SÍ USA EL ID CORRECTO
 			"role":      user.Role,
 			"exp":       time.Now().Add(time.Hour * 24).Unix(),
 		}
