@@ -11,7 +11,7 @@ export default function MasterRouteGuard() {
 
   // Validación silenciosa, sin logs
   if (user.tenant_id !== MASTER_TENANT_ID) {
-    return <Navigate to="/superadmin/my-tenant" replace />;
+    return <Navigate to="/superadmin/tenants" replace />;
   }
 
   return <Outlet />;
