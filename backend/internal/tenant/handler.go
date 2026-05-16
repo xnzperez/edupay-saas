@@ -1,68 +1,108 @@
 package tenant
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
+	"golang.org/x/crypto/bcrypt"
 )
 
-// Estructura para leer el JSON que nos envían desde Postman/Frontend
 type CreateTenantRequest struct {
 	Name                string  `json:"name"`
 	Domain              string  `json:"domain"`
 	DefaultInterestRate float64 `json:"default_interest_rate"`
+	AdminFullName       string  `json:"admin_full_name"`
+	AdminEmail          string  `json:"admin_email"`
+	AdminPassword       string  `json:"admin_password"`
 }
 
-// Handler para crear una nueva Universidad (Ruta de Super Admin)
 func CreateTenantHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var req CreateTenantRequest
 
-		// 1. Validar que el JSON esté bien formado
-		if err := c.BodyParser(&req); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "JSON inválido",
+		userRole, _ := c.Locals("user_role").(string)
+		tenantID, _ := c.Locals("tenant_id").(string)
+
+		// === RADIOGRAFÍA DE DEPURACIÓN ===
+		fmt.Println("\n--- [DEBUG] INTENTO DE APROVISIONAMIENTO ---")
+		fmt.Printf("1. user_role en Locals: '%s'\n", userRole)
+		fmt.Printf("2. tenant_id en Locals: '%s'\n", tenantID)
+		fmt.Printf("3. Header X-Tenant-ID real: '%s'\n", c.Get("X-Tenant-ID"))
+		fmt.Println("--------------------------------------------\n")
+
+		// Comprobación dura
+		if userRole != "SUPERADMIN" || tenantID != "00000000-0000-4000-8000-000000000000" {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "Acceso denegado. Credenciales de inquilino o rol insuficientes para aprovisionar.",
 			})
 		}
 
-		// 2. Insertar en la base de datos.
-		// Nota: Usamos db.QueryRow directamente (sin RunInTenantTx) porque
-		// los Tenants están un nivel por encima del RLS.
+		var req CreateTenantRequest
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "JSON inválido"})
+		}
+
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.AdminPassword), bcrypt.DefaultCost)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error cifrando contraseña del administrador"})
+		}
+
+		tx, err := db.Beginx()
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al iniciar la transacción"})
+		}
+		defer tx.Rollback()
+
 		var newTenantID string
-		query := `
+		tenantQuery := `
 			INSERT INTO tenants (name, domain, default_interest_rate) 
 			VALUES ($1, $2, $3) 
 			RETURNING id`
 
-		err := db.QueryRow(query, req.Name, req.Domain, req.DefaultInterestRate).Scan(&newTenantID)
+		err = tx.QueryRow(tenantQuery, req.Name, req.Domain, req.DefaultInterestRate).Scan(&newTenantID)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error":   "No se pudo registrar la Universidad (¿el dominio ya existe?)",
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+				"error":   "No se pudo registrar la Universidad. Es posible que el dominio ya exista.",
 				"details": err.Error(),
 			})
 		}
 
-		// 3. Devolver éxito con el ID recién creado
+		var newAdminID string
+		adminQuery := `
+			INSERT INTO users (tenant_id, role, email, full_name, password_hash)
+			VALUES ($1, 'ADMIN', $2, $3, $4)
+			RETURNING id`
+
+		err = tx.QueryRow(adminQuery, newTenantID, req.AdminEmail, req.AdminFullName, string(hashedPassword)).Scan(&newAdminID)
+		if err != nil {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+				"error":   "No se pudo crear el administrador. ¿El correo ya está en uso?",
+				"details": err.Error(),
+			})
+		}
+
+		if err := tx.Commit(); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al guardar los cambios"})
+		}
+
 		return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-			"message":   "Universidad registrada exitosamente",
+			"message":   "Universidad y Administrador registrados exitosamente",
 			"tenant_id": newTenantID,
+			"admin_id":  newAdminID,
 			"domain":    req.Domain,
 		})
 	}
 }
 
-// GetTenantsHandler devuelve la lista de todas las universidades (Tenants).
-// PROTEGIDO: SOLO el Master SuperAdmin puede ejecutar esto.
 func GetTenantsHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// 1. Verificación de seguridad absoluta (Solo el Maestro pasa)
 		isMaster, ok := c.Locals("is_master").(bool)
 		if !ok || !isMaster {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-				"error": "Acceso denegado. Solo el administrador maestro del SaaS puede ver todas las universidades.",
+				"error": "Acceso denegado. Solo el Root Global puede ver universidades.",
 			})
 		}
 
-		// 2. Estructura para mapear la respuesta de la base de datos
 		type TenantResponse struct {
 			ID        string `json:"id" db:"id"`
 			Name      string `json:"name" db:"name"`
@@ -71,13 +111,7 @@ func GetTenantsHandler(db *sqlx.DB) fiber.Handler {
 		}
 
 		var tenants []TenantResponse
-
-		// 3. Query limpia (El Maestro tiene derecho a ver toda la tabla)
-		query := `
-			SELECT id, name, created_at, is_active 
-			FROM tenants 
-			ORDER BY created_at DESC
-		`
+		query := `SELECT id, name, created_at, is_active FROM tenants ORDER BY created_at DESC`
 
 		err := db.Select(&tenants, query)
 		if err != nil {
@@ -98,21 +132,16 @@ func GetTenantsHandler(db *sqlx.DB) fiber.Handler {
 	}
 }
 
-// UpdateTenantStatusHandler permite activar o suspender una universidad.
-// Solo el Maestro puede ejecutar esto.
 func UpdateTenantStatusHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// 1. Verificación Maestro (Igual que en GetTenants)
 		isMaster, ok := c.Locals("is_master").(bool)
 		if !ok || !isMaster {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-				"error": "Acceso denegado. Solo el administrador maestro puede modificar universidades.",
+				"error": "Acceso denegado. Solo el Root Global puede modificar universidades.",
 			})
 		}
 
 		id := c.Params("id")
-
-		// Estructura para recibir el nuevo estado
 		type Request struct {
 			IsActive bool `json:"is_active"`
 		}
@@ -122,14 +151,11 @@ func UpdateTenantStatusHandler(db *sqlx.DB) fiber.Handler {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo inválido"})
 		}
 
-		// En un SaaS real, podrías tener una columna 'is_active' (BOOLEAN)
-		// Si aún no la tienes, esta query fallará, pero es el estándar.
 		query := `UPDATE tenants SET is_active = $1 WHERE id = $2`
-
 		_, err := db.Exec(query, req.IsActive, id)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error":   "No se pudo actualizar el estado de la universidad",
+				"error":   "No se pudo actualizar el estado",
 				"details": err.Error(),
 			})
 		}
@@ -149,7 +175,6 @@ func UpdateTenantStatusHandler(db *sqlx.DB) fiber.Handler {
 func GetMyTenantHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		tenantID := c.Locals("tenant_id").(string)
-
 		type MyTenantResponse struct {
 			ID                  string  `json:"id" db:"id"`
 			Name                string  `json:"name" db:"name"`
@@ -160,13 +185,11 @@ func GetMyTenantHandler(db *sqlx.DB) fiber.Handler {
 		}
 
 		var t MyTenantResponse
-		query := `SELECT id, name, domain, default_interest_rate, is_active, created_at 
-                  FROM tenants WHERE id = $1`
+		query := `SELECT id, name, domain, default_interest_rate, is_active, created_at FROM tenants WHERE id = $1`
 
 		if err := db.Get(&t, query, tenantID); err != nil {
 			return c.Status(404).JSON(fiber.Map{"error": "Universidad no encontrada"})
 		}
-
 		return c.JSON(fiber.Map{"data": t})
 	}
 }
@@ -175,7 +198,6 @@ func GetMyTenantHandler(db *sqlx.DB) fiber.Handler {
 func UpdateMyTenantHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		tenantID := c.Locals("tenant_id").(string)
-
 		type UpdateRequest struct {
 			Domain              string  `json:"domain"`
 			DefaultInterestRate float64 `json:"default_interest_rate"`
@@ -183,18 +205,15 @@ func UpdateMyTenantHandler(db *sqlx.DB) fiber.Handler {
 
 		var req UpdateRequest
 		if err := c.BodyParser(&req); err != nil {
-			return c.Status(400).JSON(fiber.Map{"error": "Cuerpo de petición inválido"})
+			return c.Status(400).JSON(fiber.Map{"error": "Cuerpo inválido"})
 		}
 
-		query := `UPDATE tenants 
-                  SET domain = $1, default_interest_rate = $2 
-                  WHERE id = $3`
-
+		query := `UPDATE tenants SET domain = $1, default_interest_rate = $2 WHERE id = $3`
 		_, err := db.Exec(query, req.Domain, req.DefaultInterestRate, tenantID)
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "No se pudo actualizar la configuración"})
 		}
 
-		return c.JSON(fiber.Map{"message": "Configuración de universidad actualizada"})
+		return c.JSON(fiber.Map{"message": "Configuración actualizada"})
 	}
 }

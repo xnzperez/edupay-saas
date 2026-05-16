@@ -70,7 +70,6 @@ func main() {
 		return c.Status(200).JSON(fiber.Map{"status": "success", "database": dbStatus})
 	})
 
-	app.Post("/admin/tenants", tenant.CreateTenantHandler(db))
 	// Webhooks externos (Públicos)
 	app.Post("/webhooks/mercadopago", payment.WebhookHandler(db))
 
@@ -85,6 +84,8 @@ func main() {
 	// Inyectamos el Rate Limiter justo antes del Handler de login
 	api.Post("/users/login", auth.LoginRateLimiter(), user.LoginHandler(db))
 
+	api.Post("/users/password-reset/request", user.RequestPasswordResetHandler(db))
+	api.Post("/users/password-reset/confirm", user.ResetPasswordHandler(db))
 	// --- BARRERA DE SEGURIDAD JWT ---
 	// Todo lo que declaremos de aquí hacia abajo exigirá estar logueado (Token Bearer)
 	api.Use(auth.Protected())
@@ -134,6 +135,7 @@ func main() {
 	// ==========================================
 
 	// 🌍 Gestión Global (Exclusivo Maestro - Controlado por el is_master interno)
+	api.Post("/admin/tenants", auth.RequireRole("SUPERADMIN"), tenant.CreateTenantHandler(db)) // <-- RUTA CORREGIDA
 	api.Get("/tenants", auth.RequireRole("SUPERADMIN"), tenant.GetTenantsHandler(db))
 	api.Patch("/tenants/:id/status", auth.RequireRole("SUPERADMIN"), tenant.UpdateTenantStatusHandler(db))
 

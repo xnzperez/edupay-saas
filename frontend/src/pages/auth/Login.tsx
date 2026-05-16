@@ -4,11 +4,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { sileo } from "sileo";
 
-import { loginUser } from "../../services/auth";
+import {
+  loginUser,
+  requestPasswordReset,
+  confirmPasswordReset,
+} from "../../services/auth";
 import { useAuthStore } from "../../store/authStore";
 import { loginSchema, type LoginFormValues } from "../../validations/auth";
 
-// Definimos el array de imágenes estáticas
 const CAROUSEL_IMAGES = [
   "/modern-university.avif",
   "/data-center-abstract.avif",
@@ -23,19 +26,25 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // --- LÓGICA DEL CARRUSEL ---
+  // --- ESTADOS DEL MODAL DE RECUPERACIÓN ---
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [resetStep, setResetStep] = useState<1 | 2>(1);
+  const [isResetLoading, setIsResetLoading] = useState(false);
+  const [resetData, setResetData] = useState({
+    email: "",
+    otp: "",
+    newPassword: "",
+  });
+
   useEffect(() => {
-    // Cambia la imagen cada 5 segundos
     const interval = setInterval(() => {
       setCurrentImageIndex(
         (prevIndex) => (prevIndex + 1) % CAROUSEL_IMAGES.length,
       );
     }, 5000);
-
-    return () => clearInterval(interval); // Cleanup para evitar fugas de memoria
+    return () => clearInterval(interval);
   }, []);
 
-  // --- EL VIGILANTE DE LA PUERTA ---
   useEffect(() => {
     if (user) {
       if (user.role === "SUPERADMIN")
@@ -67,17 +76,168 @@ export default function Login() {
       else if (role === "ADMIN") navigate("/admin");
       else navigate("/student");
     } catch (error: any) {
-      // El manejo de errores ya lo hace el interceptor o la vista
+      // Manejado por interceptores
     } finally {
       setIsLoading(false);
     }
   };
 
+  // --- FUNCIONES DE RECUPERACIÓN ---
+  const handleRequestOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetData.email) {
+      sileo.error({ title: "Error", description: "Ingresa tu correo." });
+      return;
+    }
+    setIsResetLoading(true);
+    try {
+      // Casteo estricto para satisfacer a TypeScript
+      const tenantId = import.meta.env.VITE_TENANT_ID as string;
+      const res = await requestPasswordReset(
+        { email: resetData.email },
+        tenantId,
+      );
+      sileo.success({ title: "Código Enviado", description: res.message });
+      setResetStep(2);
+    } catch (error: any) {
+      sileo.error({
+        title: "Error",
+        description: "Revisa los datos e intenta de nuevo.",
+      });
+    } finally {
+      setIsResetLoading(false);
+    }
+  };
+
+  const handleConfirmReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetData.otp || !resetData.newPassword) {
+      sileo.error({ title: "Error", description: "Llena todos los campos." });
+      return;
+    }
+    setIsResetLoading(true);
+    try {
+      // Casteo estricto para satisfacer a TypeScript
+      const tenantId = import.meta.env.VITE_TENANT_ID as string;
+      const res = await confirmPasswordReset(
+        {
+          email: resetData.email,
+          otp_code: resetData.otp,
+          new_password: resetData.newPassword,
+        },
+        tenantId,
+      );
+      sileo.success({ title: "¡Éxito!", description: res.message });
+      setIsResetModalOpen(false);
+      setResetStep(1);
+      setResetData({ email: "", otp: "", newPassword: "" });
+    } catch (error: any) {
+      sileo.error({
+        title: "Error",
+        description: "Código inválido o expirado.",
+      });
+    } finally {
+      setIsResetLoading(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen bg-background font-sans selection:bg-primary/30">
+    <div className="flex min-h-screen bg-background font-sans selection:bg-primary/30 relative">
+      {/* --- MODAL DE RECUPERACIÓN DE CONTRASEÑA --- */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/95 animate-in fade-in duration-200">
+          <div className="bg-surface border border-line rounded-3xl w-full max-w-md p-8 shadow-2xl relative">
+            <button
+              onClick={() => {
+                setIsResetModalOpen(false);
+                setResetStep(1);
+              }}
+              className="absolute top-4 right-4 text-muted hover:text-foreground transition-colors"
+            >
+              ✕
+            </button>
+            <h3 className="text-2xl font-bold text-foreground mb-2">
+              {resetStep === 1 ? "Recuperar Acceso" : "Nueva Contraseña"}
+            </h3>
+            <p className="text-sm text-muted mb-6">
+              {resetStep === 1
+                ? "Ingresa tu correo institucional para recibir un código de seguridad."
+                : "Ingresa el código de 6 dígitos que enviamos a tu correo y tu nueva contraseña."}
+            </p>
+
+            {resetStep === 1 ? (
+              <form onSubmit={handleRequestOTP} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-muted uppercase">
+                    Correo Institucional
+                  </label>
+                  <input
+                    type="email"
+                    value={resetData.email}
+                    onChange={(e) =>
+                      setResetData({ ...resetData, email: e.target.value })
+                    }
+                    placeholder="usuario@campusucc.edu.co"
+                    className="w-full px-4 py-3 mt-1 bg-background border border-line rounded-xl text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isResetLoading}
+                  className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 mt-4"
+                >
+                  {isResetLoading ? "Enviando..." : "Solicitar Código"}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleConfirmReset} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-muted uppercase">
+                    Código OTP
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={resetData.otp}
+                    onChange={(e) =>
+                      setResetData({ ...resetData, otp: e.target.value })
+                    }
+                    placeholder="123456"
+                    className="w-full px-4 py-3 mt-1 bg-background border border-line rounded-xl text-foreground font-mono tracking-widest focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted uppercase">
+                    Nueva Contraseña
+                  </label>
+                  <input
+                    type="password"
+                    value={resetData.newPassword}
+                    onChange={(e) =>
+                      setResetData({
+                        ...resetData,
+                        newPassword: e.target.value,
+                      })
+                    }
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 mt-1 bg-background border border-line rounded-xl text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isResetLoading}
+                  className="w-full bg-success hover:bg-success/80 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 mt-4"
+                >
+                  {isResetLoading ? "Guardando..." : "Confirmar y Guardar"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* --- LADO IZQUIERDO: Marketing & Imagen --- */}
       <div className="hidden lg:flex w-1/2 relative bg-surface overflow-hidden border-r border-line">
-        {/* Fondo de Cuadrícula */}
         <div
           className="absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.05]"
           style={{
@@ -86,11 +246,8 @@ export default function Login() {
             backgroundSize: "24px 24px",
           }}
         ></div>
-
         <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-primary/10 to-transparent z-0"></div>
-
         <div className="relative z-10 flex flex-col justify-between h-full p-16 w-full">
-          {/* Header Izquierdo */}
           <div>
             <div className="inline-flex items-center gap-3 bg-surface border border-line px-4 py-2 rounded-full shadow-sm mb-8">
               <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
@@ -109,18 +266,13 @@ export default function Login() {
               universitaria mediante arquitectura distribuida.
             </p>
           </div>
-
-          {/* CONTENEDOR DEL CARRUSEL DE IMÁGENES */}
           <div className="flex-1 w-full my-8 relative rounded-2xl overflow-hidden border border-line/50 shadow-2xl bg-surface group">
-            {/* Capa de oscurecimiento superpuesta para mejorar lectura si hubiera texto encima y darle toque premium */}
             <div className="absolute inset-0 bg-primary/10 group-hover:bg-transparent transition-colors duration-700 z-10 mix-blend-multiply"></div>
-
             {CAROUSEL_IMAGES.map((src, index) => (
               <img
                 key={src}
                 src={src}
                 alt={`EduPay Feature ${index + 1}`}
-                // Optimizaciones de carga
                 fetchPriority={index === 0 ? "high" : "auto"}
                 loading={index === 0 ? "eager" : "lazy"}
                 decoding="async"
@@ -130,8 +282,6 @@ export default function Login() {
               />
             ))}
           </div>
-
-          {/* Footer Izquierdo (Glassmorphism) */}
           <div className="p-6 bg-surface/50 backdrop-blur-xl border border-line rounded-2xl shadow-sm">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-background rounded-xl border border-line flex items-center justify-center shadow-sm">
@@ -162,7 +312,7 @@ export default function Login() {
         </div>
       </div>
 
-      {/* --- LADO DERECHO: Formulario (Minimalista) --- */}
+      {/* --- LADO DERECHO: Formulario --- */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 relative bg-background">
         <div className="w-full max-w-md space-y-10">
           <div className="text-center lg:text-left space-y-2">
@@ -201,12 +351,13 @@ export default function Login() {
                 <label className="text-xs font-bold text-muted tracking-wider uppercase">
                   Contraseña
                 </label>
-                <a
-                  href="#"
+                <button
+                  type="button"
+                  onClick={() => setIsResetModalOpen(true)}
                   className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors"
                 >
                   ¿Olvidaste tu contraseña?
-                </a>
+                </button>
               </div>
               <input
                 type="password"
