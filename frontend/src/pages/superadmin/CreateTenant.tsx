@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   createTenantSchema,
   type CreateTenantFormData,
-  type CreateTenantInput,
 } from "../../validations/tenant";
 import { tenantService } from "../../services/tenant";
 import { useNotificationStore } from "../../store/notificationStore";
@@ -19,12 +18,12 @@ export default function CreateTenant() {
     message: "",
   });
 
-const {
+  const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<CreateTenantInput, any, CreateTenantFormData>({
+  } = useForm<CreateTenantFormData>({
     resolver: zodResolver(createTenantSchema),
     defaultValues: {
       name: "",
@@ -148,7 +147,7 @@ const {
                 type="number"
                 step="0.0001"
                 placeholder="Ej: 0.0015 para 0.15%"
-                {...register("default_interest_rate")}
+                {...register("default_interest_rate", { valueAsNumber: true })}
                 className={`w-full px-4 py-3 bg-surface border rounded-xl text-foreground placeholder:text-muted focus:ring-1 focus:outline-none transition-all duration-200 ${
                   errors.default_interest_rate
                     ? "border-danger focus:ring-danger/20 focus:border-danger"

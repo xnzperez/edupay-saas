@@ -18,7 +18,6 @@ import {
 import { Users, DollarSign, Activity } from "lucide-react";
 
 // Extracting type from response for easier typing
-type TenantStat = GlobalStatsResponse["data"]["tenants_stats"][0];
 type StatsData = GlobalStatsResponse["data"];
 
 // Premium Linear/Stripe style color palette for the PieChart

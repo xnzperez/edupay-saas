@@ -8,7 +8,7 @@ export const createTenantSchema = z.object({
     .min(3, "El dominio debe tener al menos 3 caracteres")
     .regex(/^[a-z0-9.-]+$/, "Solo minúsculas, números, puntos y guiones")
     .includes(".", { message: "Debe ser un dominio válido (ej: ucc.edu.co)" }),
-  default_interest_rate: z.coerce
+  default_interest_rate: z
     .number()
     .min(0, "La tasa no puede ser negativa")
     .max(1, "La tasa no puede ser mayor a 1 (100%)"),
