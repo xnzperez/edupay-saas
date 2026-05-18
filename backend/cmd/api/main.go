@@ -137,6 +137,7 @@ func main() {
 	// 🌍 Gestión Global (Exclusivo Maestro - Controlado por el is_master interno)
 	api.Post("/admin/tenants", auth.RequireRole("SUPERADMIN"), tenant.CreateTenantHandler(db)) // <-- RUTA CORREGIDA
 	api.Get("/tenants", auth.RequireRole("SUPERADMIN"), tenant.GetTenantsHandler(db))
+	api.Get("/tenants/global-stats", auth.RequireRole("SUPERADMIN"), tenant.GetGlobalStatsHandler(db))
 	api.Patch("/tenants/:id/status", auth.RequireRole("SUPERADMIN"), tenant.UpdateTenantStatusHandler(db))
 
 	// 🏢 Módulo de Gestión de Inquilino Local

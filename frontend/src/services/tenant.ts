@@ -64,3 +64,29 @@ export const updateMyTenant = async (
 ): Promise<void> => {
   await api.patch("/superadmin/my-tenant", data);
 };
+
+// Interfaces para el tipado estricto
+export interface TenantStat {
+  tenant_id: string;
+  tenant_name: string;
+  is_active: boolean;
+  total_students: number;
+  total_volume: number;
+}
+
+export interface GlobalStatsResponse {
+  message: string;
+  data: {
+    global_students: number;
+    global_volume: number;
+    tenants_stats: TenantStat[];
+  };
+}
+
+// Función de llamada a la API
+export const getGlobalStats = async (): Promise<
+  GlobalStatsResponse["data"]
+> => {
+  const response = await api.get<GlobalStatsResponse>("/tenants/global-stats");
+  return response.data.data;
+};

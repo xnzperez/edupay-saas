@@ -52,18 +52,14 @@ export default function Login() {
   useEffect(() => {
     if (user) {
       if (user.role === "SUPERADMIN") {
-        if (user.tenant_id === MASTER_ID) {
-          navigate("/superadmin/tenants", { replace: true });
-        } else {
-          navigate("/superadmin/my-tenant", { replace: true });
-        }
+        navigate("/superadmin", { replace: true });
       } else if (user.role === "ADMIN") {
         navigate("/admin", { replace: true });
       } else {
         navigate("/student", { replace: true });
       }
     }
-  }, [user, navigate, MASTER_ID]);
+  }, [user, navigate]);
 
   const {
     register,
@@ -93,12 +89,9 @@ export default function Login() {
         masterEnv: MASTER_ID,
       });
 
+      // Delegamos la decisión final al Enrutador Inteligente (App.tsx)
       if (decodedToken.role === "SUPERADMIN") {
-        if (decodedToken.tenant_id === MASTER_ID) {
-          navigate("/superadmin/tenants");
-        } else {
-          navigate("/superadmin/my-tenant");
-        }
+        navigate("/superadmin");
       } else if (decodedToken.role === "ADMIN") {
         navigate("/admin");
       } else {

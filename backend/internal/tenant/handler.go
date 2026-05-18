@@ -218,3 +218,74 @@ func UpdateMyTenantHandler(db *sqlx.DB) fiber.Handler {
 		return c.JSON(fiber.Map{"message": "Configuración actualizada"})
 	}
 }
+
+// GetGlobalStatsHandler obtiene las métricas de rentabilidad y volumen para el SuperAdmin Maestro
+func GetGlobalStatsHandler(db *sqlx.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// 1. Barrera de Seguridad Estricta
+		isMaster, ok := c.Locals("is_master").(bool)
+		if !ok || !isMaster {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "Acceso denegado. Solo el Root Maestro puede acceder a la telemetría global.",
+			})
+		}
+
+		// 2. Estructura de Datos Analítica
+		type TenantStat struct {
+			TenantID      string  `json:"tenant_id" db:"id"`
+			TenantName    string  `json:"tenant_name" db:"name"`
+			IsActive      bool    `json:"is_active" db:"is_active"`
+			TotalStudents int     `json:"total_students" db:"total_students"`
+			TotalVolume   float64 `json:"total_volume" db:"total_volume"`
+		}
+
+		var stats []TenantStat
+
+		// 3. Consulta de Agregación en PostgreSQL
+		// Se usa LEFT JOIN para no excluir universidades recién creadas sin estudiantes
+		// COALESCE evita valores nulos si no hay transacciones
+		query := `
+			SELECT 
+				t.id,
+				t.name,
+				t.is_active,
+				COUNT(DISTINCT u.id) AS total_students,
+				COALESCE(SUM(wt.amount), 0) AS total_volume
+			FROM tenants t
+			LEFT JOIN users u ON t.id = u.tenant_id AND u.role = 'STUDENT'
+			LEFT JOIN wallets w ON u.id = w.user_id
+			LEFT JOIN wallet_txs wt ON w.id = wt.wallet_id AND wt.tx_type = 'DEPOSIT'
+			GROUP BY t.id, t.name, t.is_active
+			ORDER BY total_volume DESC;
+		`
+
+		err := db.Select(&stats, query)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error":   "Error calculando métricas globales",
+				"details": err.Error(),
+			})
+		}
+
+		if stats == nil {
+			stats = []TenantStat{}
+		}
+
+		// 4. Consolidación de Totales Globales
+		var globalStudents int
+		var globalVolume float64
+		for _, s := range stats {
+			globalStudents += s.TotalStudents
+			globalVolume += s.TotalVolume
+		}
+
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"message": "Estadísticas globales calculadas con éxito",
+			"data": fiber.Map{
+				"global_students": globalStudents,
+				"global_volume":   globalVolume,
+				"tenants_stats":   stats,
+			},
+		})
+	}
+}

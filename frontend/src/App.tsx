@@ -29,15 +29,15 @@ import CreateTenant from "./pages/superadmin/CreateTenant";
 import TenantsList from "./pages/superadmin/TenantsList";
 import MyTenant from "./pages/superadmin/MyTenant";
 import AdminsList from "./pages/superadmin/AdminsList";
+import { GlobalDashboard } from "./pages/superadmin/GlobalDashboard";
 
 // --- ENRUTADOR INTELIGENTE DE ÍNDICE ---
-// Este componente evalúa la identidad antes de decidir a dónde redirigir en "/superadmin"
 const SuperAdminIndexRedirect = () => {
   const user = useAuthStore((state) => state.user);
   const MASTER_ID = import.meta.env.VITE_MASTER_TENANT_ID;
 
   if (user?.tenant_id === MASTER_ID) {
-    return <Navigate to="tenants" replace />;
+    return <Navigate to="dashboard" replace />;
   }
   return <Navigate to="my-tenant" replace />;
 };
@@ -89,6 +89,7 @@ export default function App() {
               <Route index element={<SuperAdminIndexRedirect />} />
 
               <Route element={<MasterRouteGuard />}>
+                <Route path="dashboard" element={<GlobalDashboard />} />
                 <Route path="tenants" element={<TenantsList />} />
                 <Route path="create-tenant" element={<CreateTenant />} />
               </Route>

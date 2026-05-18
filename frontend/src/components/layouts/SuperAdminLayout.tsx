@@ -12,6 +12,11 @@ const getNavItems = (isMaster: boolean) =>
   isMaster
     ? [
         {
+          name: "Global Telemetry", // <-- NUEVO BOTÓN
+          path: "/superadmin/dashboard",
+          exact: true,
+        },
+        {
           name: "Universidades (Inquilinos)",
           path: "/superadmin/tenants",
           exact: true,
