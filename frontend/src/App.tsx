@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import { Toaster } from "sileo";
-import { useThemeStore } from "./store/themeStore"; // <-- IMPORTANTE: Importar el store
+import { useThemeStore } from "./store/themeStore";
+import { useAuthStore } from "./store/authStore"; // <-- NUEVO IMPORT
 
 import Login from "./pages/auth/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -29,19 +30,28 @@ import TenantsList from "./pages/superadmin/TenantsList";
 import MyTenant from "./pages/superadmin/MyTenant";
 import AdminsList from "./pages/superadmin/AdminsList";
 
+// --- ENRUTADOR INTELIGENTE DE ÍNDICE ---
+// Este componente evalúa la identidad antes de decidir a dónde redirigir en "/superadmin"
+const SuperAdminIndexRedirect = () => {
+  const user = useAuthStore((state) => state.user);
+  const MASTER_ID = import.meta.env.VITE_MASTER_TENANT_ID;
+
+  if (user?.tenant_id === MASTER_ID) {
+    return <Navigate to="tenants" replace />;
+  }
+  return <Navigate to="my-tenant" replace />;
+};
+
 export default function App() {
-  // 1. Guardamos el tema en una constante para usarla abajo
   const theme = useThemeStore((state) => state.theme);
 
   return (
     <BrowserRouter>
-      {/* 2. Pasamos el theme dinámicamente */}
       <Toaster
         position="top-center"
-        theme={theme} // Ahora es reactivo: 'light' o 'dark'
+        theme={theme}
         options={{
           roundness: 16,
-          // Eliminamos el 'fill' hardcoded para que Sileo maneje el contraste
           styles: {
             title: "font-bold!",
             description: "font-medium opacity-80!",
@@ -75,7 +85,9 @@ export default function App() {
 
           <Route element={<RoleRole allowedRole="SUPERADMIN" />}>
             <Route path="/superadmin" element={<SuperAdminLayout />}>
-              <Route index element={<Navigate to="tenants" replace />} />
+              {/* 2. CORRECCIÓN: Usamos el interceptor en lugar de una redirección ciega */}
+              <Route index element={<SuperAdminIndexRedirect />} />
+
               <Route element={<MasterRouteGuard />}>
                 <Route path="tenants" element={<TenantsList />} />
                 <Route path="create-tenant" element={<CreateTenant />} />

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { sileo } from "sileo";
+import { jwtDecode } from "jwt-decode";
 
 import {
   loginUser,
@@ -36,6 +37,8 @@ export default function Login() {
     newPassword: "",
   });
 
+  const MASTER_ID = import.meta.env.VITE_MASTER_TENANT_ID;
+
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex(
@@ -45,14 +48,22 @@ export default function Login() {
     return () => clearInterval(interval);
   }, []);
 
+  // 1. CORRECCIÓN: El useEffect ahora respeta la separación de poderes
   useEffect(() => {
     if (user) {
-      if (user.role === "SUPERADMIN")
-        navigate("/superadmin/create-tenant", { replace: true });
-      else if (user.role === "ADMIN") navigate("/admin", { replace: true });
-      else navigate("/student", { replace: true });
+      if (user.role === "SUPERADMIN") {
+        if (user.tenant_id === MASTER_ID) {
+          navigate("/superadmin/tenants", { replace: true });
+        } else {
+          navigate("/superadmin/my-tenant", { replace: true });
+        }
+      } else if (user.role === "ADMIN") {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate("/student", { replace: true });
+      }
     }
-  }, [user, navigate]);
+  }, [user, navigate, MASTER_ID]);
 
   const {
     register,
@@ -71,12 +82,30 @@ export default function Login() {
         title: "¡Acceso concedido!",
         description: response.message,
       });
-      const role = useAuthStore.getState().user?.role;
-      if (role === "SUPERADMIN") navigate("/superadmin/create-tenant");
-      else if (role === "ADMIN") navigate("/admin");
-      else navigate("/student");
+
+      // 2. CORRECCIÓN: Decodificación en caliente para evitar Race Conditions
+      const decodedToken = jwtDecode<{ role: string; tenant_id: string }>(
+        response.token,
+      );
+
+      console.log("=== RADIOGRAFÍA DE LOGIN ===", {
+        tokenPayload: decodedToken,
+        masterEnv: MASTER_ID,
+      });
+
+      if (decodedToken.role === "SUPERADMIN") {
+        if (decodedToken.tenant_id === MASTER_ID) {
+          navigate("/superadmin/tenants");
+        } else {
+          navigate("/superadmin/my-tenant");
+        }
+      } else if (decodedToken.role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/student");
+      }
     } catch (error: any) {
-      // Manejado por interceptores
+      // El manejo de errores ya lo hace el interceptor
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +120,6 @@ export default function Login() {
     }
     setIsResetLoading(true);
     try {
-      // Casteo estricto para satisfacer a TypeScript
       const tenantId = import.meta.env.VITE_TENANT_ID as string;
       const res = await requestPasswordReset(
         { email: resetData.email },
@@ -117,7 +145,6 @@ export default function Login() {
     }
     setIsResetLoading(true);
     try {
-      // Casteo estricto para satisfacer a TypeScript
       const tenantId = import.meta.env.VITE_TENANT_ID as string;
       const res = await confirmPasswordReset(
         {

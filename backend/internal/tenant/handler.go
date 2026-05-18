@@ -67,10 +67,11 @@ func CreateTenantHandler(db *sqlx.DB) fiber.Handler {
 			})
 		}
 
+		// 5. Insertar al Administrador asignándole el nuevo TenantID (Como SUPERADMIN Local)
 		var newAdminID string
 		adminQuery := `
 			INSERT INTO users (tenant_id, role, email, full_name, password_hash)
-			VALUES ($1, 'ADMIN', $2, $3, $4)
+			VALUES ($1, 'SUPERADMIN', $2, $3, $4)
 			RETURNING id`
 
 		err = tx.QueryRow(adminQuery, newTenantID, req.AdminEmail, req.AdminFullName, string(hashedPassword)).Scan(&newAdminID)
