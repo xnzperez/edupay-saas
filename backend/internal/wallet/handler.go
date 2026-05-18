@@ -318,19 +318,26 @@ type GlobalTransactionDTO struct {
 	UserFullName string    `json:"user_full_name" db:"full_name"`
 }
 
-// GetAllTransactions extrae el flujo de caja global de todo el tenant con paginación
-func GetAllTransactions(db *sqlx.DB, page, limit int) ([]GlobalTransactionDTO, int, error) {
+// GetAllTransactions extrae el flujo de caja aislado por tenant con paginación
+func GetAllTransactions(db *sqlx.DB, tenantID string, page, limit int) ([]GlobalTransactionDTO, int, error) {
 	offset := (page - 1) * limit
 
 	var total int
-	// CORRECCIÓN 1: Contamos en tu tabla real (wallet_txs)
-	err := db.Get(&total, `SELECT COUNT(*) FROM wallet_txs`)
+	// CORRECCIÓN 1: Contamos estrictamente las transacciones que pertenecen a usuarios de este tenant
+	countQuery := `
+		SELECT COUNT(t.id) 
+		FROM wallet_txs t
+		JOIN wallets w ON t.wallet_id = w.id
+		JOIN users u ON w.user_id = u.id
+		WHERE u.tenant_id = $1
+	`
+	err := db.Get(&total, countQuery, tenantID)
 	if err != nil {
-		log.Printf("[Auditoría] Error contando transacciones: %v\n", err)
+		log.Printf("[Auditoría] Error contando transacciones del tenant %s: %v\n", tenantID, err)
 		return nil, 0, err
 	}
 
-	// CORRECCIÓN 2: Leemos de tu tabla real (wallet_txs)
+	// CORRECCIÓN 2: Filtramos la lectura con la cláusula WHERE aislada
 	query := `
 		SELECT 
 			t.id, t.tx_type, t.amount, t.reference, t.created_at,
@@ -338,13 +345,14 @@ func GetAllTransactions(db *sqlx.DB, page, limit int) ([]GlobalTransactionDTO, i
 		FROM wallet_txs t
 		JOIN wallets w ON t.wallet_id = w.id
 		JOIN users u ON w.user_id = u.id
+		WHERE u.tenant_id = $1
 		ORDER BY t.created_at DESC
-		LIMIT $1 OFFSET $2
+		LIMIT $2 OFFSET $3
 	`
 
 	var transactions []GlobalTransactionDTO
-	if err := db.Select(&transactions, query, limit, offset); err != nil {
-		log.Printf("[Auditoría] Error ejecutando SELECT JOIN: %v\n", err)
+	if err := db.Select(&transactions, query, tenantID, limit, offset); err != nil {
+		log.Printf("[Auditoría] Error ejecutando SELECT JOIN filtrado: %v\n", err)
 		return nil, 0, err
 	}
 	if transactions == nil {
@@ -354,14 +362,14 @@ func GetAllTransactions(db *sqlx.DB, page, limit int) ([]GlobalTransactionDTO, i
 	return transactions, total, nil
 }
 
-// GetAdminTransactions maneja la petición HTTP para la auditoría global de cajeros
+// GetAdminTransactions maneja la petición HTTP para la auditoría de cajeros (Aislado por Tenant)
 func GetAdminTransactions(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// 1. Parseamos los parámetros de paginación de la URL (ej: ?page=1&limit=10)
 		page := c.QueryInt("page", 1)
 		limit := c.QueryInt("limit", 10)
 
-		// Sanitización básica para evitar queries absurdos
+		// Sanitización básica para evitar queries absurdos y proteger la memoria
 		if page < 1 {
 			page = 1
 		}
@@ -369,8 +377,17 @@ func GetAdminTransactions(db *sqlx.DB) fiber.Handler {
 			limit = 10
 		}
 
-		// 2. Llamamos a nuestra función de BD
-		transactions, total, err := GetAllTransactions(db, page, limit)
+		// --- BARRERA DE SEGURIDAD: EXTRACCIÓN DE CONTEXTO ---
+		tenantID, ok := c.Locals("tenant_id").(string)
+		if !ok || tenantID == "" {
+			log.Println("[Seguridad] Intento de acceso a transacciones sin tenant_id en el contexto")
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "Acceso denegado: Identidad de la institución no verificada",
+			})
+		}
+
+		// 2. Llamamos a nuestra función de BD inyectando el tenantID
+		transactions, total, err := GetAllTransactions(db, tenantID, page, limit)
 		if err != nil {
 			log.Printf("[API] Fallo GetAdminTransactions: %v\n", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

@@ -6,6 +6,7 @@ import ThemeToggle from "../ThemeToggle";
 export default function StudentLayout() {
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
+  const user = useAuthStore((state) => state.user);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -57,8 +58,11 @@ export default function StudentLayout() {
           {/* Sección Derecha: Usuario y Logout Desktop */}
           <div className="hidden md:flex items-center gap-4">
             <div className="flex items-center gap-2 border-r border-line pr-4">
-              <span className="text-sm font-medium text-foreground">
-                Hola, Estudiante
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold text-white text-sm">
+                E
+              </div>
+              <span className="text-sm font-bold tracking-wide text-foreground">
+                {user?.role === "STUDENT" ? "Estudiante" : "Usuario"}
               </span>
             </div>
 

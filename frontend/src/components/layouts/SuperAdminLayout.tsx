@@ -11,8 +11,16 @@ import ThemeToggle from "../ThemeToggle";
 const getNavItems = (isMaster: boolean) =>
   isMaster
     ? [
-        { name: "Universidades (Inquilinos)", path: "/superadmin/tenants", exact: true },
-        { name: "Nueva Universidad", path: "/superadmin/create-tenant", exact: true },
+        {
+          name: "Universidades (Inquilinos)",
+          path: "/superadmin/tenants",
+          exact: true,
+        },
+        {
+          name: "Nueva Universidad",
+          path: "/superadmin/create-tenant",
+          exact: true,
+        },
       ]
     : [
         { name: "Mi Universidad", path: "/superadmin/my-tenant", exact: true },
@@ -39,7 +47,9 @@ const NotificationBadge = ({ type }: { type: string }) => {
   };
   const colorClass = badgeColors[type] || badgeColors.default;
   return (
-    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-widest ${colorClass}`}>
+    <span
+      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-widest ${colorClass}`}
+    >
       {type}
     </span>
   );
@@ -78,7 +88,8 @@ export default function SuperAdminLayout() {
   const MASTER_TENANT_ID = import.meta.env.VITE_MASTER_TENANT_ID;
   const isMaster = user?.tenant_id === MASTER_TENANT_ID;
 
-  const { notifications, markAsRead, clearNotifications } = useNotificationStore();
+  const { notifications, markAsRead, clearNotifications } =
+    useNotificationStore();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -114,8 +125,18 @@ export default function SuperAdminLayout() {
         <div className="h-16 px-6 border-b border-line flex justify-between items-center bg-surface shrink-0">
           <h1 className="text-xl font-extrabold text-foreground tracking-tight flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/30">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
               </svg>
             </div>
             EduPay
@@ -129,8 +150,18 @@ export default function SuperAdminLayout() {
             onClick={() => setIsSidebarOpen(false)}
             aria-label="Cerrar menú"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -165,8 +196,18 @@ export default function SuperAdminLayout() {
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-danger bg-danger/5 hover:bg-danger hover:white rounded-xl transition-all duration-200 border border-danger/10 hover:border-danger hover:shadow-lg hover:shadow-danger/20"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              />
             </svg>
             Cerrar Sesión
           </button>
@@ -183,8 +224,18 @@ export default function SuperAdminLayout() {
               onClick={() => setIsSidebarOpen(true)}
               aria-label="Abrir menú"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             </button>
             {!user ? (
@@ -209,8 +260,18 @@ export default function SuperAdminLayout() {
                 }`}
                 aria-label="Notificaciones"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                  />
                 </svg>
                 {unreadCount > 0 && (
                   <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-danger rounded-full ring-2 ring-surface animate-pulse" />
@@ -220,7 +281,10 @@ export default function SuperAdminLayout() {
               {/* DROPDOWN */}
               {isNotifOpen && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsNotifOpen(false)}
+                  />
                   <div className="absolute right-0 mt-3 w-[340px] bg-surface border border-line rounded-2xl shadow-2xl shadow-black/5 z-50 overflow-hidden origin-top-right animate-in fade-in zoom-in-95 duration-200">
                     <div className="p-4 border-b border-line bg-surface/50 flex justify-between items-center backdrop-blur-sm">
                       <h4 className="font-bold text-foreground text-sm flex items-center gap-2">
@@ -242,15 +306,31 @@ export default function SuperAdminLayout() {
                       {notifications.length === 0 ? (
                         <div className="p-12 flex flex-col items-center justify-center text-center">
                           <div className="w-12 h-12 bg-line rounded-full flex items-center justify-center mb-3">
-                            <svg className="w-6 h-6 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                            <svg
+                              className="w-6 h-6 text-muted"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.5}
+                                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                              />
                             </svg>
                           </div>
-                          <p className="text-sm font-medium text-foreground">Bandeja limpia</p>
-                          <p className="text-xs text-muted mt-1">No hay actividad reciente.</p>
+                          <p className="text-sm font-medium text-foreground">
+                            Bandeja limpia
+                          </p>
+                          <p className="text-xs text-muted mt-1">
+                            No hay actividad reciente.
+                          </p>
                         </div>
                       ) : (
-                        notifications.map((n) => <NotificationItem key={n.id} notification={n} />)
+                        notifications.map((n) => (
+                          <NotificationItem key={n.id} notification={n} />
+                        ))
                       )}
                     </div>
                   </div>
@@ -261,7 +341,7 @@ export default function SuperAdminLayout() {
             {/* PERFIL & THEME TOGGLE */}
             <div className="flex items-center gap-3 border-l border-line pl-3 md:pl-4 h-8">
               <ThemeToggle />
-              
+
               <div className="hidden md:flex items-center gap-3 pl-2">
                 <div className="flex flex-col items-end">
                   {!user ? (
@@ -272,10 +352,10 @@ export default function SuperAdminLayout() {
                   ) : (
                     <>
                       <span className="text-sm font-bold text-foreground leading-none">
-                        {isMaster ? "Root Admin" : "Administrador"}
+                        {isMaster ? "Root Maestro" : "SuperAdmin Local"}
                       </span>
-                      <span className="text-[11px] text-muted mt-1 font-medium">
-                        {user.email || "edu@pay.saas"}
+                      <span className="text-[11px] text-muted mt-1 font-medium font-mono uppercase">
+                        ID: {user.sub ? user.sub.split("-")[0] : "SISTEMA"}
                       </span>
                     </>
                   )}

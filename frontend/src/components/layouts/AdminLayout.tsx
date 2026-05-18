@@ -7,6 +7,7 @@ import ThemeToggle from "../ThemeToggle";
 export default function AdminLayout() {
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
+  const user = useAuthStore((state) => state.user);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // --- LÓGICA DE NOTIFICACIONES ---
@@ -318,12 +319,19 @@ export default function AdminLayout() {
             {/* --- FIN SISTEMA DE NOTIFICACIONES --- */}
 
             <div className="flex items-center gap-3 border-l border-line pl-4">
-              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-muted flex items-center justify-center font-bold text-background shadow-inner text-sm md:text-base">
-                C
+              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-primary flex items-center justify-center font-bold text-white shadow-inner text-sm md:text-base uppercase">
+                {user?.sub ? user.sub.charAt(0) : "A"}{" "}
+                {/* Usa la inicial del email o ID */}
               </div>
-              <span className="hidden md:block text-sm font-bold tracking-wide text-foreground">
-                Cajero UCC
-              </span>
+              <div className="hidden md:flex flex-col">
+                <span className="text-sm font-bold tracking-wide text-foreground leading-tight">
+                  {user?.role === "ADMIN"
+                    ? "Cajero Local"
+                    : user?.role === "STUDENT"
+                      ? "Estudiante"
+                      : "SuperAdmin"}
+                </span>
+              </div>
             </div>
 
             {/* --- BOTÓN DE TEMA --- */}
