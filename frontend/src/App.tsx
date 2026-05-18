@@ -1,3 +1,4 @@
+import React, { Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import { Toaster } from "sileo";
 import { useThemeStore } from "./store/themeStore";
@@ -29,7 +30,8 @@ import CreateTenant from "./pages/superadmin/CreateTenant";
 import TenantsList from "./pages/superadmin/TenantsList";
 import MyTenant from "./pages/superadmin/MyTenant";
 import AdminsList from "./pages/superadmin/AdminsList";
-import { GlobalDashboard } from "./pages/superadmin/GlobalDashboard";
+
+const GlobalDashboard = React.lazy(() => import('./pages/superadmin/GlobalDashboard'));
 
 // --- ENRUTADOR INTELIGENTE DE ÍNDICE ---
 const SuperAdminIndexRedirect = () => {
@@ -89,7 +91,7 @@ export default function App() {
               <Route index element={<SuperAdminIndexRedirect />} />
 
               <Route element={<MasterRouteGuard />}>
-                <Route path="dashboard" element={<GlobalDashboard />} />
+                <Route path="dashboard" element={<Suspense fallback={<div className="h-screen w-full animate-pulse bg-surface border border-line rounded-xl"></div>}><GlobalDashboard /></Suspense>} />
                 <Route path="tenants" element={<TenantsList />} />
                 <Route path="create-tenant" element={<CreateTenant />} />
               </Route>

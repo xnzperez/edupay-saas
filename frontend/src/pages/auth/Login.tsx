@@ -162,7 +162,7 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background font-sans selection:bg-primary/30 relative">
+    <main className="flex min-h-screen bg-background font-sans selection:bg-primary/30 relative">
       {/* --- MODAL DE RECUPERACIÓN DE CONTRASEÑA --- */}
       {isResetModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/95 animate-in fade-in duration-200">
@@ -374,7 +374,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setIsResetModalOpen(true)}
-                  className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors"
+                  className="text-xs font-semibold text-primary-hover transition-colors"
                 >
                   ¿Olvidaste tu contraseña?
                 </button>
@@ -408,6 +408,6 @@ export default function Login() {
           </form>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
