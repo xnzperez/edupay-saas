@@ -130,7 +130,7 @@ export default function Transactions() {
         <button
           onClick={handleExportCSV}
           disabled={isExporting || isLoading}
-          className="bg-primary hover:bg-primary-hover text-background px-6 py-2 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95 shadow-md disabled:opacity-50 disabled:transform-none disabled:cursor-not-allowed cursor-pointer"
+          className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-xl font-bold transition-all duration-200 transform hover:-translate-y-0.5 shadow-md disabled:opacity-50 disabled:transform-none disabled:cursor-not-allowed cursor-pointer"
         >
           {isExporting ? "Generando CSV..." : "Exportar Auditoría CSV"}
         </button>
@@ -138,8 +138,11 @@ export default function Transactions() {
 
       <div className="bg-surface border border-line rounded-2xl shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="flex h-64 items-center justify-center animate-pulse text-foreground font-mono text-sm">
-            DESCARGANDO LIBROS MAYORES...
+          <div className="p-4 space-y-3">
+            <div className="h-12 bg-surface border border-line rounded-xl animate-pulse"></div>
+            <div className="h-12 bg-surface border border-line rounded-xl animate-pulse"></div>
+            <div className="h-12 bg-surface border border-line rounded-xl animate-pulse"></div>
+            <div className="h-12 bg-surface border border-line rounded-xl animate-pulse"></div>
           </div>
         ) : transactions.length === 0 ? (
           <div className="p-12 text-center text-foreground italic">
@@ -203,7 +206,7 @@ export default function Transactions() {
               <select
                 value={limit}
                 onChange={handleLimitChange}
-                className="bg-surface border border-line text-foreground rounded px-2 py-1 outline-none focus:border-primary transition-colors"
+                className="bg-surface border border-line text-foreground rounded-lg px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer"
               >
                 <option value={5}>5</option>
                 <option value={10}>10</option>

@@ -263,13 +263,13 @@ export default function Dashboard() {
                       )
                     }
                     placeholder="Monto"
-                    className="w-full pl-8 pr-4 py-3 bg-background border border-line rounded-xl text-foreground focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none transition-all font-bold text-sm"
+                    className="w-full pl-8 pr-4 py-3 bg-background border border-line rounded-xl text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-bold text-sm"
                   />
                 </div>
                 <button
                   onClick={handleTopUp}
                   disabled={isRedirecting || !topUpAmount}
-                  className="w-full bg-foreground hover:bg-primary text-background font-bold py-3 rounded-xl transition-all shadow-md disabled:opacity-30 flex items-center justify-center gap-2 text-sm"
+                  className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-xl transition-all duration-200 shadow-md disabled:opacity-50 hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm"
                 >
                   {isRedirecting ? (
                     <span className="animate-pulse">PROCESANDO...</span>
@@ -296,7 +296,7 @@ export default function Dashboard() {
                     onClick={() => setTxFilter(filter)}
                     className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
                       txFilter === filter
-                        ? "bg-surface shadow-sm text-primary"
+                        ? "bg-primary text-white shadow-sm"
                         : "text-muted hover:text-foreground"
                     }`}
                   >
@@ -478,7 +478,7 @@ export default function Dashboard() {
                       <button
                         onClick={() => handlePayDebt(debt.id, debt.amount)}
                         disabled={payingId === debt.id}
-                        className="w-full bg-primary hover:bg-primary-hover text-white text-xs font-bold py-2.5 rounded-lg transition-all disabled:opacity-40"
+                        className="w-full bg-primary hover:bg-primary-hover text-white text-xs font-bold py-2.5 rounded-xl transition-all duration-200 disabled:opacity-50 hover:-translate-y-0.5 shadow-md"
                       >
                         {payingId === debt.id ? "PROCESANDO..." : "PAGAR AHORA"}
                       </button>
@@ -486,7 +486,7 @@ export default function Dashboard() {
                       <button
                         onClick={() => handleDownloadReceipt(debt.id)}
                         disabled={downloadingId === debt.id}
-                        className="w-full bg-nord-2 hover:bg-nord-3 text-nord-6 font-bold py-2.5 rounded-xl transition-all disabled:opacity-40 text-xs flex items-center justify-center gap-2"
+                        className="w-full bg-surface border border-line hover:border-primary text-foreground font-bold py-2.5 rounded-xl transition-all duration-200 disabled:opacity-50 hover:-translate-y-0.5 text-xs flex items-center justify-center gap-2 shadow-sm"
                       >
                         {downloadingId === debt.id
                           ? "GENERANDO PDF..."

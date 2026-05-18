@@ -76,8 +76,13 @@ export default function MyTenant() {
 
   if (isLoading) {
     return (
-      <div className="p-8 text-foreground animate-pulse font-bold text-xl">
-        Cargando configuración...
+      <div className="space-y-6 max-w-4xl p-4">
+        <div className="h-8 w-64 bg-surface border border-line rounded-xl animate-pulse"></div>
+        <div className="h-4 w-96 bg-surface border border-line rounded-xl animate-pulse"></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+          <div className="md:col-span-1 h-64 bg-surface border border-line rounded-xl animate-pulse"></div>
+          <div className="md:col-span-2 h-64 bg-surface border border-line rounded-xl animate-pulse"></div>
+        </div>
       </div>
     );
   }
@@ -162,7 +167,7 @@ export default function MyTenant() {
                 type="text"
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
-                className="w-full bg-background border border-line rounded-lg px-4 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
+                className="w-full px-4 py-3 bg-surface border border-line rounded-xl text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 placeholder="ejemplo.edu.co"
                 required
               />
@@ -181,7 +186,7 @@ export default function MyTenant() {
                 min="0"
                 value={interestRate}
                 onChange={(e) => setInterestRate(parseFloat(e.target.value))}
-                className="w-full bg-background border border-line rounded-lg px-4 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
+                className="w-full px-4 py-3 bg-surface border border-line rounded-xl text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 required
               />
               <p className="text-xs text-muted mt-1">
@@ -194,7 +199,7 @@ export default function MyTenant() {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="w-full sm:w-auto bg-primary hover:bg-primary-hover text-background font-bold py-2 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 disabled:opacity-50"
               >
                 {isSaving ? "Guardando cambios..." : "Guardar Configuración"}
               </button>

@@ -205,13 +205,13 @@ export default function Login() {
                       setResetData({ ...resetData, email: e.target.value })
                     }
                     placeholder="usuario@campusucc.edu.co"
-                    className="w-full px-4 py-3 mt-1 bg-background border border-line rounded-xl text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="w-full px-4 py-3 mt-1 bg-surface border border-line rounded-xl text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={isResetLoading}
-                  className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 mt-4"
+                  className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-xl transition-all duration-200 disabled:opacity-50 mt-4"
                 >
                   {isResetLoading ? "Enviando..." : "Solicitar Código"}
                 </button>
@@ -230,7 +230,7 @@ export default function Login() {
                       setResetData({ ...resetData, otp: e.target.value })
                     }
                     placeholder="123456"
-                    className="w-full px-4 py-3 mt-1 bg-background border border-line rounded-xl text-foreground font-mono tracking-widest focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="w-full px-4 py-3 mt-1 bg-surface border border-line rounded-xl text-foreground placeholder:text-muted font-mono tracking-widest focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                   />
                 </div>
                 <div>
@@ -247,7 +247,7 @@ export default function Login() {
                       })
                     }
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 mt-1 bg-background border border-line rounded-xl text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="w-full px-4 py-3 mt-1 bg-surface border border-line rounded-xl text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                   />
                 </div>
                 <button
@@ -360,7 +360,7 @@ export default function Login() {
                 type="email"
                 {...register("email")}
                 placeholder="usuario@campusucc.edu.co"
-                className={`w-full px-4 py-3.5 bg-surface border rounded-xl text-foreground placeholder-muted/50 focus:ring-4 focus:outline-none transition-all duration-200 ${
+                className={`w-full px-4 py-3.5 bg-surface border rounded-xl text-foreground placeholder:text-muted focus:ring-4 focus:outline-none transition-all duration-200 ${
                   errors.email
                     ? "border-danger focus:ring-danger/20"
                     : "border-line focus:border-primary focus:ring-primary/20"
@@ -390,7 +390,7 @@ export default function Login() {
                 type="password"
                 {...register("password")}
                 placeholder="••••••••"
-                className={`w-full px-4 py-3.5 bg-surface border rounded-xl text-foreground placeholder-muted/50 focus:ring-4 focus:outline-none transition-all duration-200 ${
+                className={`w-full px-4 py-3.5 bg-surface border rounded-xl text-foreground placeholder:text-muted focus:ring-4 focus:outline-none transition-all duration-200 ${
                   errors.password
                     ? "border-danger focus:ring-danger/20"
                     : "border-line focus:border-primary focus:ring-primary/20"
@@ -406,7 +406,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-4 px-4 border border-transparent rounded-xl shadow-lg shadow-primary/20 text-sm font-bold text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-4 focus:ring-primary/30 disabled:opacity-70 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5"
+              className="w-full flex justify-center py-4 px-4 border border-transparent rounded-xl shadow-lg shadow-primary/20 text-sm font-bold text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-4 focus:ring-primary/30 disabled:opacity-70 transition-all duration-200 hover:-translate-y-0.5"
             >
               {isLoading
                 ? "Estableciendo conexión segura..."

@@ -106,7 +106,7 @@ export default function TenantsList() {
         <input
           type="text"
           placeholder="Buscar universidad por nombre..."
-          className="bg-transparent border-none outline-none text-foreground w-full font-medium placeholder-muted"
+          className="bg-transparent border-none outline-none text-foreground w-full font-medium placeholder:text-muted"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -127,11 +127,12 @@ export default function TenantsList() {
             <tbody className="divide-y divide-line">
               {isLoading ? (
                 <tr>
-                  <td
-                    colSpan={4}
-                    className="p-8 text-center text-foreground font-bold animate-pulse"
-                  >
-                    Cargando información desde el servidor...
+                  <td colSpan={4} className="p-4">
+                    <div className="space-y-3">
+                      <div className="h-12 bg-surface border border-line rounded-xl animate-pulse"></div>
+                      <div className="h-12 bg-surface border border-line rounded-xl animate-pulse"></div>
+                      <div className="h-12 bg-surface border border-line rounded-xl animate-pulse"></div>
+                    </div>
                   </td>
                 </tr>
               ) : filteredTenants.length === 0 ? (
@@ -249,11 +250,11 @@ export default function TenantsList() {
               <button
                 onClick={handleToggleStatus}
                 disabled={isToggling}
-                className={`w-full mt-4 font-bold py-2 px-4 rounded-lg border transition-all flex items-center justify-center gap-2 shadow-md ${
+                className={`w-full mt-4 font-bold py-3 px-4 rounded-xl border transition-all duration-200 flex items-center justify-center gap-2 shadow-md ${
                   selectedTenant.is_active
-                    ? "bg-danger/10 text-danger border-danger hover:bg-danger hover:text-background"
-                    : "bg-success/10 text-success border-success hover:bg-success hover:text-background"
-                } ${isToggling ? "opacity-50 cursor-not-allowed" : ""}`}
+                    ? "bg-danger/10 text-danger border-danger hover:bg-danger hover:text-white"
+                    : "bg-success/10 text-success border-success hover:bg-success hover:text-white"
+                } ${isToggling ? "opacity-50 cursor-not-allowed" : "hover:-translate-y-0.5"}`}
               >
                 {isToggling ? (
                   "Procesando orden..."

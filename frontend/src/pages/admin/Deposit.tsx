@@ -114,13 +114,13 @@ export default function Students() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="ej. isaac@campusucc.edu.co"
-                  className="w-full px-4 py-3 bg-background border border-line rounded-xl text-foreground placeholder-muted focus:ring-4 focus:border-primary focus:ring-primary/20 focus:outline-none transition-all"
+                  className="w-full px-4 py-3 bg-background border border-line rounded-xl text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 />
               </div>
               <button
                 type="submit"
                 disabled={isSearching || !searchQuery.trim()}
-                className="w-full bg-primary hover:bg-primary-hover text-background font-bold py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+                className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-xl transition-all duration-200 disabled:opacity-50 hover:-translate-y-0.5 shadow-md flex justify-center items-center gap-2"
               >
                 {isSearching ? "Buscando en la base de datos..." : "Buscar"}
               </button>
@@ -181,7 +181,7 @@ export default function Students() {
                         type="number"
                         {...register("amount", { valueAsNumber: true })}
                         placeholder="50000"
-                        className={`w-full pl-10 pr-4 py-4 bg-background border rounded-xl text-foreground font-bold text-xl placeholder-muted focus:ring-4 focus:outline-none transition-all ${
+                        className={`w-full pl-10 pr-4 py-4 bg-background border rounded-xl text-foreground font-bold text-xl placeholder:text-muted focus:ring-4 focus:outline-none transition-all ${
                           errors.amount
                             ? "border-danger focus:ring-danger/20"
                             : "border-line focus:border-primary focus:ring-primary/20"
@@ -198,7 +198,7 @@ export default function Students() {
                   <button
                     type="submit"
                     disabled={isDepositing}
-                    className="w-full bg-success hover:bg-green-600 text-background font-extrabold text-lg py-4 rounded-xl shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
+                    className="w-full bg-success hover:bg-success/80 text-white font-extrabold text-lg py-4 rounded-xl shadow-lg transition-all duration-200 disabled:opacity-70 hover:-translate-y-0.5 flex justify-center items-center"
                   >
                     {isDepositing
                       ? "Procesando depósito seguro..."

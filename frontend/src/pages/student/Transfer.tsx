@@ -173,9 +173,9 @@ export default function Transfer() {
                 <input
                   type="number"
                   {...register("amount", { valueAsNumber: true })}
-                  className={`w-full bg-background border rounded-2xl py-6 pl-14 pr-6 text-4xl font-black text-foreground focus:outline-none transition-all ${
+                  className={`w-full bg-background border rounded-2xl py-6 pl-14 pr-6 text-4xl font-black text-foreground placeholder:text-muted focus:outline-none transition-all ${
                     errors.amount
-                      ? "border-danger focus:ring-4 focus:ring-danger/20"
+                      ? "border-danger focus:ring-4 focus:ring-danger/20 focus:border-danger"
                       : "border-line focus:border-primary focus:ring-4 focus:ring-primary/20"
                   }`}
                   placeholder="0"
@@ -211,9 +211,9 @@ export default function Transfer() {
                 <input
                   type="email"
                   {...register("to_email")}
-                  className={`w-full bg-background border rounded-xl py-4 pl-12 pr-4 text-sm font-bold text-foreground focus:outline-none transition-all ${
+                  className={`w-full bg-background border rounded-xl py-4 pl-12 pr-4 text-sm font-bold text-foreground placeholder:text-muted focus:outline-none transition-all ${
                     errors.to_email
-                      ? "border-danger focus:ring-4 focus:ring-danger/20"
+                      ? "border-danger focus:ring-4 focus:ring-danger/20 focus:border-danger"
                       : "border-line focus:border-primary focus:ring-4 focus:ring-primary/20"
                   }`}
                   placeholder="usuario@campusucc.edu.co"
@@ -294,14 +294,14 @@ export default function Transfer() {
                   placeholder="Nombre corto (Ej. Juan P.)"
                   value={newContactName}
                   onChange={(e) => setNewContactName(e.target.value)}
-                  className="w-full text-xs font-bold bg-surface border border-line p-2.5 rounded-lg focus:border-primary focus:outline-none"
+                  className="w-full text-xs font-bold bg-surface border border-line p-2.5 rounded-lg text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 />
                 <input
                   type="email"
                   placeholder="correo@campusucc.edu.co"
                   value={newContactEmail}
                   onChange={(e) => setNewContactEmail(e.target.value)}
-                  className="w-full text-xs font-bold bg-surface border border-line p-2.5 rounded-lg focus:border-primary focus:outline-none"
+                  className="w-full text-xs font-bold bg-surface border border-line p-2.5 rounded-lg text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 />
                 <button
                   type="button"
@@ -315,8 +315,10 @@ export default function Transfer() {
 
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
               {isLoadingContacts ? (
-                <div className="text-center text-xs font-bold text-muted mt-10 animate-pulse">
-                  Cargando...
+                <div className="space-y-3">
+                  <div className="h-16 bg-surface border border-line rounded-2xl animate-pulse"></div>
+                  <div className="h-16 bg-surface border border-line rounded-2xl animate-pulse"></div>
+                  <div className="h-16 bg-surface border border-line rounded-2xl animate-pulse"></div>
                 </div>
               ) : contacts.length === 0 ? (
                 <div className="text-center text-xs font-bold text-muted mt-10">

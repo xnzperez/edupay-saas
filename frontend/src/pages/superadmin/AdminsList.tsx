@@ -104,7 +104,7 @@ export default function AdminsList() {
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-primary hover:bg-primary-hover text-background px-6 py-2 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95"
+          className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-xl font-bold transition-all duration-200 transform hover:-translate-y-0.5 shadow-md"
         >
           + Nuevo Cajero
         </button>
@@ -130,14 +130,14 @@ export default function AdminsList() {
           </thead>
           <tbody className="divide-y divide-line">
             {isLoading ? (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="p-10 text-center text-foreground animate-pulse"
-                >
-                  Consultando base de datos...
-                </td>
-              </tr>
+                <tr>
+                  <td colSpan={4} className="p-4">
+                    <div className="space-y-3">
+                      <div className="h-10 bg-surface border border-line rounded-xl animate-pulse"></div>
+                      <div className="h-10 bg-surface border border-line rounded-xl animate-pulse"></div>
+                    </div>
+                  </td>
+                </tr>
             ) : admins.length === 0 ? (
               <tr>
                 <td colSpan={4} className="p-10 text-center text-foreground italic">
@@ -193,7 +193,7 @@ export default function AdminsList() {
                 type="text"
                 placeholder="Nombre completo"
                 required
-                className="w-full bg-background border border-line rounded-lg p-2 text-foreground focus:border-primary outline-none"
+                className="w-full px-4 py-3 bg-background border border-line rounded-xl text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 value={formData.full_name}
                 onChange={(e) =>
                   setFormData({ ...formData, full_name: e.target.value })
@@ -203,7 +203,7 @@ export default function AdminsList() {
                 type="email"
                 placeholder="Email institucional"
                 required
-                className="w-full bg-background border border-line rounded-lg p-2 text-foreground focus:border-primary outline-none"
+                className="w-full px-4 py-3 bg-background border border-line rounded-xl text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 value={formData.email}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
@@ -213,7 +213,7 @@ export default function AdminsList() {
                 type="password"
                 placeholder="Contraseña temporal"
                 required
-                className="w-full bg-background border border-line rounded-lg p-2 text-foreground focus:border-primary outline-none"
+                className="w-full px-4 py-3 bg-background border border-line rounded-xl text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 value={formData.password}
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
@@ -224,14 +224,14 @@ export default function AdminsList() {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="flex-1 text-foreground hover:text-foreground font-bold"
+                className="flex-1 text-muted hover:text-foreground font-bold transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="flex-1 bg-primary text-background py-2 rounded-lg font-bold hover:bg-primary-hover"
+                className="flex-1 bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary-hover transition-all duration-200 disabled:opacity-50 hover:-translate-y-0.5 shadow-md"
               >
                 {isSaving ? "Guardando..." : "Registrar"}
               </button>

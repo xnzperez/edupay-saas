@@ -169,7 +169,7 @@ export default function StudentsList() {
         </div>
         <button
           onClick={openCreateModal}
-          className="bg-primary hover:bg-primary-hover text-background px-6 py-2 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95 shadow-md"
+          className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-xl font-bold transition-all duration-200 transform hover:-translate-y-0.5 shadow-md"
         >
           + Matricular Alumno
         </button>
@@ -196,14 +196,14 @@ export default function StudentsList() {
           </thead>
           <tbody className="divide-y divide-line">
             {isLoading ? (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="p-10 text-center text-foreground animate-pulse font-medium"
-                >
-                  Cargando base de datos...
-                </td>
-              </tr>
+                <tr>
+                  <td colSpan={4} className="p-4">
+                    <div className="space-y-3">
+                      <div className="h-10 bg-surface border border-line rounded-xl animate-pulse"></div>
+                      <div className="h-10 bg-surface border border-line rounded-xl animate-pulse"></div>
+                    </div>
+                  </td>
+                </tr>
             ) : students.length === 0 ? (
               <tr>
                 <td colSpan={4} className="p-10 text-center text-foreground italic">
@@ -258,7 +258,7 @@ export default function StudentsList() {
             <select
               value={limit}
               onChange={handleLimitChange}
-              className="bg-surface border border-line text-foreground rounded px-2 py-1 outline-none focus:border-primary transition-colors"
+              className="bg-surface border border-line text-foreground rounded-lg px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
@@ -316,7 +316,7 @@ export default function StudentsList() {
                 type="text"
                 placeholder="Nombre completo"
                 required
-                className="w-full bg-background border border-line rounded-lg p-3 text-foreground focus:border-primary outline-none transition-colors"
+                className="w-full px-4 py-3 bg-background border border-line rounded-xl text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 value={formData.full_name}
                 onChange={(e) =>
                   setFormData({ ...formData, full_name: e.target.value })
@@ -326,7 +326,7 @@ export default function StudentsList() {
                 type="email"
                 placeholder="Correo institucional"
                 required
-                className="w-full bg-background border border-line rounded-lg p-3 text-foreground focus:border-primary outline-none transition-colors"
+                className="w-full px-4 py-3 bg-background border border-line rounded-xl text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 value={formData.email}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
@@ -337,7 +337,7 @@ export default function StudentsList() {
                   type="password"
                   placeholder="Contraseña temporal"
                   required
-                  className="w-full bg-background border border-line rounded-lg p-3 text-foreground focus:border-primary outline-none transition-colors"
+                  className="w-full px-4 py-3 bg-background border border-line rounded-xl text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                   value={formData.password}
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
@@ -349,14 +349,14 @@ export default function StudentsList() {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="flex-1 text-foreground hover:text-foreground font-bold transition-colors"
+                className="flex-1 text-muted hover:text-foreground font-bold transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="flex-1 bg-primary text-background py-2 rounded-lg font-bold hover:bg-primary-hover transition-colors disabled:opacity-50"
+                className="flex-1 bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary-hover transition-all duration-200 disabled:opacity-50 hover:-translate-y-0.5 shadow-md"
               >
                 {isSaving
                   ? "Procesando..."

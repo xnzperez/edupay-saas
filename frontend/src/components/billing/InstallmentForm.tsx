@@ -57,10 +57,10 @@ export function InstallmentForm({ student, onSuccess }: InstallmentFormProps) {
           type="text"
           {...register("concept")}
           placeholder="Ej: Matrícula Semestre 9"
-          className={`w-full px-4 py-3 bg-background border rounded-xl text-foreground placeholder-muted focus:ring-4 focus:outline-none transition-all ${
+          className={`w-full px-4 py-3 bg-background border rounded-xl text-foreground placeholder:text-muted focus:outline-none transition-all ${
             errors.concept
-              ? "border-danger focus:ring-danger/20"
-              : "border-line focus:border-primary focus:ring-primary/20"
+              ? "border-danger focus:ring-4 focus:ring-danger/20 focus:border-danger"
+              : "border-line focus:border-primary focus:ring-4 focus:ring-primary/20"
           }`}
         />
         {errors.concept && (
@@ -83,10 +83,10 @@ export function InstallmentForm({ student, onSuccess }: InstallmentFormProps) {
               type="number"
               {...register("amount", { valueAsNumber: true })}
               placeholder="0.00"
-              className={`w-full pl-8 pr-4 py-3 bg-background border rounded-xl text-foreground placeholder-muted focus:ring-4 focus:outline-none transition-all ${
+              className={`w-full pl-8 pr-4 py-3 bg-background border rounded-xl text-foreground placeholder:text-muted focus:outline-none transition-all ${
                 errors.amount
-                  ? "border-danger focus:ring-danger/20"
-                  : "border-line focus:border-primary focus:ring-primary/20"
+                  ? "border-danger focus:ring-4 focus:ring-danger/20 focus:border-danger"
+                  : "border-line focus:border-primary focus:ring-4 focus:ring-primary/20"
               }`}
             />
           </div>
@@ -105,10 +105,10 @@ export function InstallmentForm({ student, onSuccess }: InstallmentFormProps) {
             type="date"
             {...register("due_date")}
             style={{ colorScheme: "dark" }}
-            className={`w-full px-4 py-3 bg-background border rounded-xl text-foreground focus:ring-4 focus:outline-none transition-all ${
+            className={`w-full px-4 py-3 bg-background border rounded-xl text-foreground focus:outline-none transition-all ${
               errors.due_date
-                ? "border-danger focus:ring-danger/20"
-                : "border-line focus:border-primary focus:ring-primary/20"
+                ? "border-danger focus:ring-4 focus:ring-danger/20 focus:border-danger"
+                : "border-line focus:border-primary focus:ring-4 focus:ring-primary/20"
             }`}
           />
           {errors.due_date && (
@@ -122,7 +122,7 @@ export function InstallmentForm({ student, onSuccess }: InstallmentFormProps) {
       <button
         type="submit"
         disabled={isBilling}
-        className="w-full mt-4 bg-danger hover:bg-red-600 text-background font-extrabold text-lg py-4 rounded-xl shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
+        className="w-full mt-4 bg-danger hover:bg-danger/80 text-white font-extrabold text-lg py-4 rounded-xl shadow-md transition-all duration-200 disabled:opacity-50 hover:-translate-y-0.5 flex justify-center items-center"
       >
         {isBilling ? "Procesando Cobro..." : "EMITIR COBRO"}
       </button>
