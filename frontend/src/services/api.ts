@@ -13,14 +13,24 @@ export const api = axios.create({
 // --- INTERCEPTOR DE PETICIÓN (De salida) ---
 api.interceptors.request.use(
   (config) => {
-    // Inyectar el Tenant ID (La universidad)
-    const tenantId = import.meta.env.VITE_TENANT_ID;
-    if (tenantId) {
-      config.headers["X-Tenant-ID"] = tenantId;
+    // 1. Extraemos el estado global de forma segura
+    const authState = useAuthStore.getState();
+    const user = authState.user;
+    const token = authState.token;
+
+    // 2. BARRERA MULTI-TENANT DINÁMICA
+    // Si está logueado, mandamos estrictamente SU tenant (El que viene del JWT decodificado)
+    if (user?.tenant_id) {
+      config.headers["X-Tenant-ID"] = user.tenant_id;
+    } else {
+      // Si NO está logueado (pantalla de login o registro), usamos el fallback de la app cliente
+      const fallbackTenantId = import.meta.env.VITE_TENANT_ID;
+      if (fallbackTenantId) {
+        config.headers["X-Tenant-ID"] = fallbackTenantId;
+      }
     }
 
-    // Buscar "token" exactamente como lo guarda Zustand
-    const token = localStorage.getItem("token");
+    // 3. Inyectar el Token
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
