@@ -4,26 +4,26 @@
 @layer base {
   :root {
     /* MODO CLARO (Light Theme - Estilo Stripe) */
-    --bg-base: #f8fafc; /* slate-50 - Fondo general */
-    --bg-surface: #ffffff; /* white - Tarjetas, modales, tablas */
-    --border-subtle: #e2e8f0; /* slate-200 - Bordes suaves */
-    --text-main: #0f172a; /* slate-900 - Títulos y texto fuerte */
-    --text-muted: #64748b; /* slate-500 - Descripciones */
+    --bg-base: #F7F9FC; /* Fondo general limpio y distintivo */
+    --bg-surface: #FFFFFF; /* Tarjetas y modales en blanco puro para destacar */
+    --border-subtle: #E2E8F0; /* Bordes suaves pero definidos */
+    --text-main: #0F172A; /* Títulos y texto de máxima legibilidad */
+    --text-muted: #475569; /* Descripciones con contraste mejorado (AA+) */
 
-    --brand-primary: #2563eb; /* blue-600 - Botones de acción principal */
-    --brand-hover: #1d4ed8; /* blue-700 - Hover de botones */
+    --brand-primary: #635BFF; /* Blurple Stripe - Acción principal premium */
+    --brand-hover: #5851DF; /* Hover profundo */
   }
 
   .dark {
-    /* MODO OSCURO (Dark Theme - Estilo Vercel / Linear) */
-    --bg-base: #020617; /* slate-950 - Fondo abismal (Casi negro) */
-    --bg-surface: #0f172a; /* slate-900 - Elevación sutil para las tarjetas */
-    --border-subtle: #1e293b; /* slate-800 - Bordes ultra oscuros, apenas perceptibles */
-    --text-main: #f8fafc; /* slate-50 - Títulos y texto fuerte */
-    --text-muted: #94a3b8; /* slate-400 - Descripciones */
+    /* MODO OSCURO (Dark Theme - Estilo Linear) */
+    --bg-base: #000000; /* Fondo abismal puro, contraste absoluto */
+    --bg-surface: #09090B; /* Superficie sutilmente elevada */
+    --border-subtle: #27272A; /* Bordes elegantes y bien perceptibles */
+    --text-main: #FAFAFA; /* Texto blanco brillante para máxima legibilidad */
+    --text-muted: #A1A1AA; /* Texto secundario claro y nítido */
 
-    --brand-primary: #3b82f6; /* blue-500 - Botones de acción principal */
-    --brand-hover: #60a5fa; /* blue-400 - Hover de botones */
+    --brand-primary: #5E6AD2; /* Blurple adaptado a dark mode, alta visibilidad */
+    --brand-hover: #7A85E6; /* Hover reactivo */
   }
 }
 

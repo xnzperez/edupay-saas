@@ -6,6 +6,12 @@
       "sourceType": "github",
       "computedHash": "b242f962d5f78bf8bc147e92f2aa0341459b9f5f2f955e9867a8c41b85f22648"
     },
+    "ckm:ui-styling": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-styling/SKILL.md",
+      "computedHash": "b5f892864e479f969820c353f44faeedc61981bf2d7a854367069a80e0a264e1"
+    },
     "error-handling-patterns": {
       "source": "wshobson/agents",
       "sourceType": "github",
@@ -30,6 +36,18 @@
       "source": "obra/superpowers",
       "sourceType": "github",
       "computedHash": "72e9ab72627e4fd8ed26a582e82309a98ecdc4f6e1c99418430ac05682c9e91d"
+    },
+    "ui-ux-designer": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/ui-ux-designer/SKILL.md",
+      "computedHash": "fdccdfcc9b31cf185402e74d3d94b56709a6d4d2d92a4313d0fbafcca0a6d9a7"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "6337038fe1fe6bbe1b9f252ab678ee575859190bab6f0f246f4061824eb40875"
     },
     "vercel-react-best-practices": {
       "source": "vercel-labs/agent-skills",
