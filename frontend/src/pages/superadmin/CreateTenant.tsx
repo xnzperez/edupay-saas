@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   createTenantSchema,
   type CreateTenantFormData,
+  type CreateTenantInput,
 } from "../../validations/tenant";
 import { tenantService } from "../../services/tenant";
 import { useNotificationStore } from "../../store/notificationStore";
@@ -18,12 +19,12 @@ export default function CreateTenant() {
     message: "",
   });
 
-  const {
+const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<CreateTenantFormData>({
+  } = useForm<CreateTenantInput, any, CreateTenantFormData>({
     resolver: zodResolver(createTenantSchema),
     defaultValues: {
       name: "",
