@@ -10,9 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
-	"github.com/johnfercher/maroto/pkg/consts"
-	"github.com/johnfercher/maroto/pkg/pdf"
-	"github.com/johnfercher/maroto/pkg/props"
+	"github.com/xnzperez/edupay-saas/internal/mailer"
 	"github.com/xnzperez/edupay-saas/pkg/database"
 )
 
@@ -124,6 +122,7 @@ func CreateInstallmentHandler(db *sqlx.DB) fiber.Handler {
 
 // PayInstallmentHandler procesa el pago de una cuota usando el saldo de la billetera del estudiante.
 
+// PayInstallmentHandler procesa el pago de una cuota usando el saldo de la billetera del estudiante.
 // @Summary Pagar una cuota o deuda
 // @Description Descuenta el saldo de la billetera del estudiante para pagar una cuota. Calcula interés de mora dinámico si está vencida.
 // @Tags Facturación (Estudiantes)
@@ -140,7 +139,6 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		installmentID := c.Params("id")
 
-		// 🛡️ LAYER 1 DEFENSE (FAIL-FAST): Validar formato UUID antes de tocar la BD
 		if _, err := uuid.Parse(installmentID); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error":   "ValidationError",
@@ -150,41 +148,47 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 
 		tenantID := c.Locals("tenant_id").(string)
 
-		// 🛡️ CONTEXT MANAGEMENT: Propagación de cancelación (Timeouts/Graceful Shutdowns)
-		// Extraemos el Context y asignamos un timeout estricto de 5 segundos.
-		// Esto previene que una query colgada mantenga ocupado el Pool de Conexiones si el cliente se desconecta.
 		ctx, cancel := context.WithTimeout(c.UserContext(), 5*time.Second)
 		defer cancel()
 
-		// Abrimos una transacción. Si en algún punto el saldo no alcanza o hay un error,
-		// TODAS las operaciones se cancelan automáticamente (Rollback).
-		err := database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
+		// Variables extraídas para la Goroutine del correo
+		var studentName, studentEmail string
+		var finalAmountPaid float64
 
-			// 0. Obtener la tasa de interés de mora del SuperAdmin
+		err := database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
 			var interestRate float64
 			getTenantQuery := `SELECT default_interest_rate FROM tenants WHERE id = $1`
-			// Utilizamos GetContext para asociar la query al ciclo de vida de la petición HTTP
 			if err := tx.GetContext(ctx, &interestRate, getTenantQuery, tenantID); err != nil {
 				return fmt.Errorf("error al obtener configuración financiera: %w", err)
 			}
 
-			// 1. Buscar la cuota y bloquearla (FOR UPDATE)
 			var installment struct {
 				UserID  string    `db:"user_id"`
 				Amount  float64   `db:"amount"`
 				Status  string    `db:"status"`
 				DueDate time.Time `db:"due_date"`
 			}
-
 			getInstQuery := `SELECT user_id, amount, status, due_date FROM installments WHERE id = $1 FOR UPDATE`
 			if err := tx.GetContext(ctx, &installment, getInstQuery, installmentID); err != nil {
 				return fmt.Errorf("cuota no encontrada: %w", err)
 			}
 
-			// Validar que la cuota no esté ya pagada (Idempotencia)
 			if installment.Status == "PAID" {
 				return fmt.Errorf("esta cuota ya fue pagada")
 			}
+
+			// --- NUEVO: Obtener datos del estudiante para el PDF y Correo ---
+			var user struct {
+				FullName string `db:"full_name"`
+				Email    string `db:"email"`
+			}
+			if err := tx.GetContext(ctx, &user, `SELECT full_name, email FROM users WHERE id = $1`, installment.UserID); err != nil {
+				return fmt.Errorf("error obteniendo datos del usuario: %w", err)
+			}
+
+			// Guardamos para uso asíncrono
+			studentName = user.FullName
+			studentEmail = user.Email
 
 			// --- CÁLCULO DE MORA MATEMÁTICO ---
 			totalToPay := installment.Amount
@@ -201,40 +205,36 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 				}
 			}
 
-			// 2. Buscar la billetera del usuario y bloquearla (FOR UPDATE)
+			// Actualizamos la variable global
+			finalAmountPaid = totalToPay
+
 			var wallet struct {
 				ID      string  `db:"id"`
 				Balance float64 `db:"current_balance"`
 			}
-
 			getWalletQuery := `SELECT id, current_balance FROM wallets WHERE user_id = $1 FOR UPDATE`
 			if err := tx.GetContext(ctx, &wallet, getWalletQuery, installment.UserID); err != nil {
 				return fmt.Errorf("billetera no encontrada: %w", err)
 			}
 
-			// 3. Verificar si el estudiante tiene suficiente dinero (Validamos contra el total con mora)
 			if wallet.Balance < totalToPay {
 				return fmt.Errorf("fondos insuficientes para cubrir la cuota y la mora. Se requieren: %.2f", totalToPay)
 			}
 
-			// 4. Descontar el dinero de la billetera
 			updateWalletQuery := `UPDATE wallets SET current_balance = current_balance - $1 WHERE id = $2`
 			if _, err := tx.ExecContext(ctx, updateWalletQuery, totalToPay, wallet.ID); err != nil {
 				return fmt.Errorf("error al actualizar billetera: %w", err)
 			}
 
-			// 5. Marcar la cuota como pagada
 			updateInstQuery := `UPDATE installments SET status = 'PAID' WHERE id = $1`
 			if _, err := tx.ExecContext(ctx, updateInstQuery, installmentID); err != nil {
 				return fmt.Errorf("error al actualizar cuota: %w", err)
 			}
 
-			// 6. Dejar el comprobante en el historial de transacciones
 			txLogQuery := `
-                INSERT INTO wallet_txs (wallet_id, tenant_id, tx_type, amount, reference)
-                VALUES ($1, $2, 'FEE', $3, $4)`
+				INSERT INTO wallet_txs (wallet_id, tenant_id, tx_type, amount, reference)
+				VALUES ($1, $2, 'FEE', $3, $4)`
 
-			// Referencia dinámica y transparente para auditoría
 			reference := "Pago de cuota: " + installmentID
 			if penalty > 0 {
 				reference = fmt.Sprintf("Pago de cuota: %s (Incluye Mora: %.2f)", installmentID, penalty)
@@ -247,9 +247,7 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 			return nil
 		})
 
-		// Manejo de errores controlados o time-outs
 		if err != nil {
-			// Evaluamos si el error proviene por agotamiento de límite de tiempo del contexto
 			if ctx.Err() != nil {
 				return c.Status(fiber.StatusRequestTimeout).JSON(fiber.Map{
 					"error":   "TimeoutError",
@@ -263,6 +261,21 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 				"details": err.Error(),
 			})
 		}
+
+		// --- 🚀 DISPARO ASÍNCRONO DEL PDF (Goroutine) ---
+		// Se ejecuta fuera de la transacción para no castigar el tiempo de respuesta HTTP
+		go func(name, email string, amount float64) {
+			pdfBytes, err := GenerateReceiptBytes(name, amount)
+			if err != nil {
+				fmt.Printf("⚠️ [CRÍTICO] Error al generar el PDF corporativo: %v\n", err)
+				return
+			}
+
+			err = mailer.SendReceiptEmail(email, name, amount, pdfBytes)
+			if err != nil {
+				fmt.Printf("⚠️ [CRÍTICO] Error al enviar el correo a Resend: %v\n", err)
+			}
+		}(studentName, studentEmail, finalAmountPaid)
 
 		return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 			"message": "La cuota ha sido saldada y el registro actualizado.",
@@ -415,72 +428,17 @@ func DownloadReceiptHandler(db *sqlx.DB) fiber.Handler {
 			})
 		}
 
-		// 2. Inicializar el motor PDF (Maroto)
-		m := pdf.NewMaroto(consts.Portrait, consts.A4)
-		m.SetPageMargins(20, 20, 20)
-
-		// 3. Dibujar el Header
-		m.RegisterHeader(func() {
-			m.Row(20, func() {
-				m.Col(12, func() {
-					m.Text("Comprobante de Estado de Cuenta", props.Text{
-						Top:   12,
-						Size:  18,
-						Style: consts.Bold,
-						Align: consts.Center,
-					})
-				})
-			})
-		})
-
-		// 4. Dibujar el Cuerpo del Recibo (Grilla estilo Bootstrap)
-		m.Row(10, func() {
-			m.Col(12, func() {
-				m.Text(fmt.Sprintf("Institución: %s", data.TenantName), props.Text{Size: 12, Style: consts.Bold})
-			})
-		})
-		m.Row(10, func() {
-			m.Col(12, func() {
-				m.Text(fmt.Sprintf("Estudiante: %s (%s)", data.StudentName, data.StudentEmail), props.Text{Size: 10})
-			})
-		})
-
-		m.Row(10, func() {}) // Espaciador
-
-		m.Row(10, func() {
-			m.Col(4, func() { m.Text("Concepto:", props.Text{Style: consts.Bold}) })
-			m.Col(8, func() { m.Text(data.Description) })
-		})
-		m.Row(10, func() {
-			m.Col(4, func() { m.Text("Fecha Límite:", props.Text{Style: consts.Bold}) })
-			m.Col(8, func() { m.Text(data.DueDate) })
-		})
-		m.Row(10, func() {
-			m.Col(4, func() { m.Text("Estado Actual:", props.Text{Style: consts.Bold}) })
-			m.Col(8, func() { m.Text(data.Status) })
-		})
-
-		m.Row(10, func() {}) // Espaciador
-
-		// Totales
-		m.Row(10, func() {
-			m.Col(6, func() { m.Text("Subtotal:", props.Text{Style: consts.Bold, Align: consts.Right}) })
-			m.Col(6, func() { m.Text(fmt.Sprintf("$%.2f", data.Amount)) })
-		})
-		m.Row(10, func() {
-			m.Col(6, func() { m.Text("Mora (Penalty):", props.Text{Style: consts.Bold, Align: consts.Right}) })
-			m.Col(6, func() { m.Text(fmt.Sprintf("$%.2f", data.PenaltyAmount)) })
-		})
-		m.Row(12, func() {
-			m.Col(6, func() { m.Text("TOTAL A PAGAR:", props.Text{Size: 14, Style: consts.Bold, Align: consts.Right}) })
-			m.Col(6, func() {
-				m.Text(fmt.Sprintf("$%.2f", data.Amount+data.PenaltyAmount), props.Text{Size: 14, Style: consts.Bold})
-			})
-		})
-
-		// 5. Compilar el PDF a memoria RAM (sin tocar el disco duro)
-		// Maroto devuelve (bytes.Buffer, error), no recibe argumentos.
-		buf, err := m.Output()
+		// 2. Generar el PDF corporativo limpio
+		pdfBytes, err := GenerateStatementBytes(
+			data.TenantName,
+			data.StudentName,
+			data.StudentEmail,
+			data.Description,
+			data.DueDate,
+			data.Status,
+			data.Amount,
+			data.PenaltyAmount,
+		)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error":   "InternalError",
@@ -488,12 +446,12 @@ func DownloadReceiptHandler(db *sqlx.DB) fiber.Handler {
 			})
 		}
 
-		// 6. Enviar el binario del PDF al Frontend
+		// 3. Enviar el binario del PDF al Frontend
 		c.Set("Content-Type", "application/pdf")
 		// Sugiere al navegador abrirlo inline o descargarlo con este nombre
-		c.Set("Content-Disposition", fmt.Sprintf("inline; filename=\"recibo_%s.pdf\"", installmentID[:8]))
+		c.Set("Content-Disposition", fmt.Sprintf("inline; filename=\"estado_cuenta_%s.pdf\"", installmentID[:8]))
 
-		return c.Send(buf.Bytes())
+		return c.Send(pdfBytes)
 	}
 }
 

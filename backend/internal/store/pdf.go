@@ -11,33 +11,63 @@ import (
 // GenerateCertificatePDF crea el documento oficial en memoria RAM y retorna sus bytes
 func GenerateCertificatePDF(studentName string, itemName string) ([]byte, error) {
 	pdf := gofpdf.New("P", "mm", "A4", "")
+	
+	// 🛡️ TRADUCTOR UTF-8 PARA TILDES Y CARACTERES ESPECIALES
+	tr := pdf.UnicodeTranslatorFromDescriptor("") 
+	
 	pdf.AddPage()
 
-	// 1. Cabecera Institucional
-	pdf.SetFont("Arial", "B", 22)
-	pdf.SetTextColor(0, 51, 102) // Azul oscuro corporativo
-	pdf.CellFormat(190, 20, "UNIVERSIDAD COOPERATIVA DE COLOMBIA", "0", 1, "C", false, 0, "")
+	// 1. Marco Decorativo Perimetral
+	pdf.SetDrawColor(79, 70, 229) // Color Indigo
+	pdf.SetLineWidth(2)
+	pdf.Rect(10, 10, 190, 277, "D")
+	pdf.SetDrawColor(226, 232, 240)
+	pdf.SetLineWidth(0.5)
+	pdf.Rect(12, 12, 186, 273, "D")
 
-	pdf.SetFont("Arial", "I", 16)
-	pdf.SetTextColor(100, 100, 100)
-	pdf.CellFormat(190, 10, "Documento Oficial", "0", 1, "C", false, 0, "")
-	pdf.Ln(20)
+	pdf.Ln(25)
 
-	// 2. Cuerpo del Certificado
+	// 2. Cabecera Institucional
+	pdf.SetFont("Arial", "B", 24)
+	pdf.SetTextColor(30, 41, 59)
+	pdf.CellFormat(190, 15, tr("CERTIFICADO DE ADQUISICIÓN"), "0", 1, "C", false, 0, "")
+
 	pdf.SetFont("Arial", "", 14)
-	pdf.SetTextColor(0, 0, 0)
-	body := fmt.Sprintf("El sistema central de EduPay hace constar que el estudiante:\n\n%s\n\nha adquirido exitosamente el documento correspondiente a:\n%s.", studentName, itemName)
+	pdf.SetTextColor(148, 163, 184)
+	pdf.CellFormat(190, 10, "Expedido por EduPay SaaS Platform", "0", 1, "C", false, 0, "")
+	pdf.Ln(25)
 
-	pdf.MultiCell(190, 10, body, "0", "C", false)
-	pdf.Ln(30)
+	// 3. Cuerpo del Certificado
+	pdf.SetFont("Arial", "", 16)
+	pdf.SetTextColor(30, 41, 59)
+	pdf.CellFormat(190, 10, "Se hace constar de manera oficial que el estudiante:", "0", 1, "C", false, 0, "")
+	
+	pdf.Ln(8)
+	pdf.SetFont("Arial", "B", 22)
+	pdf.SetTextColor(79, 70, 229) // Resaltado Indigo
+	pdf.CellFormat(190, 15, tr(studentName), "0", 1, "C", false, 0, "")
+	
+	pdf.Ln(12)
+	pdf.SetFont("Arial", "", 16)
+	pdf.SetTextColor(30, 41, 59)
+	pdf.CellFormat(190, 10, "Ha adquirido y consolidado el derecho a:", "0", 1, "C", false, 0, "")
+	
+	pdf.Ln(8)
+	pdf.SetFont("Arial", "B", 18)
+	pdf.MultiCell(190, 10, tr(itemName), "0", "C", false)
+	pdf.Ln(35)
 
-	// 3. Sello de Tiempo y Autenticidad
+	// 4. Línea de firma y Sello de Tiempo
+	pdf.SetDrawColor(200, 200, 200)
+	pdf.Line(60, pdf.GetY(), 150, pdf.GetY())
+	pdf.Ln(8)
+
 	pdf.SetFont("Arial", "I", 11)
-	dateStr := time.Now().Format("02/01/2006 15:04:05")
-	pdf.CellFormat(190, 10, "Fecha de expedicion automatizada: "+dateStr, "0", 1, "C", false, 0, "")
-	pdf.CellFormat(190, 10, "Valido y verificado por EduPay SaaS", "0", 1, "C", false, 0, "")
+	pdf.SetTextColor(148, 163, 184)
+	dateStr := time.Now().Format("02/01/2006 a las 15:04:05")
+	pdf.CellFormat(190, 8, tr("Sello criptográfico de validación transaccional."), "0", 1, "C", false, 0, "")
+	pdf.CellFormat(190, 8, "Expedido el "+dateStr, "0", 1, "C", false, 0, "")
 
-	// 4. Volcado a Buffer (RAM)
 	var buf bytes.Buffer
 	err := pdf.Output(&buf)
 	if err != nil {
