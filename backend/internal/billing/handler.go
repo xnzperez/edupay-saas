@@ -3,7 +3,6 @@ package billing
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -28,12 +27,13 @@ type CreateInstallmentReq struct {
 
 // InstallmentDTO define cómo el frontend verá cada deuda
 type InstallmentDTO struct {
-	ID          string  `json:"id" db:"id"`
-	Description string  `json:"description" db:"description"`
-	Amount      float64 `json:"amount" db:"amount"`
-	Status      string  `json:"status" db:"status"`     // PENDING, PAID, OVERDUE
-	DueDate     string  `json:"due_date" db:"due_date"` // Fecha límite
-	CreatedAt   string  `json:"created_at" db:"created_at"`
+	ID            string  `json:"id" db:"id"`
+	Description   string  `json:"description" db:"description"`
+	Amount        float64 `json:"amount" db:"amount"`
+	PenaltyAmount float64 `json:"penalty_amount" db:"penalty_amount"` // <- COLUMNA AGREGADA
+	Status        string  `json:"status" db:"status"`
+	DueDate       string  `json:"due_date" db:"due_date"`
+	CreatedAt     string  `json:"created_at" db:"created_at"`
 }
 
 // StudentSearchResult define la estructura de los datos que le enviaremos al Cajero.
@@ -135,6 +135,7 @@ func CreateInstallmentHandler(db *sqlx.DB) fiber.Handler {
 // @Failure 400 {object} map[string]interface{} "Fondos insuficientes o cuota ya pagada"
 // @Failure 408 {object} map[string]interface{} "Tiempo de espera agotado"
 // @Router /billing/installments/{id}/pay [post]
+// PayInstallmentHandler procesa el pago de una cuota usando el saldo de la billetera del estudiante.
 func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		installmentID := c.Params("id")
@@ -156,19 +157,17 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 		var finalAmountPaid float64
 
 		err := database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
-			var interestRate float64
-			getTenantQuery := `SELECT default_interest_rate FROM tenants WHERE id = $1`
-			if err := tx.GetContext(ctx, &interestRate, getTenantQuery, tenantID); err != nil {
-				return fmt.Errorf("error al obtener configuración financiera: %w", err)
-			}
+			// NOTA TÉCNICA: Se eliminó la consulta de `default_interest_rate` porque
+			// la mora ya viene precalculada desde la base de datos por el Worker.
 
 			var installment struct {
-				UserID  string    `db:"user_id"`
-				Amount  float64   `db:"amount"`
-				Status  string    `db:"status"`
-				DueDate time.Time `db:"due_date"`
+				UserID        string    `db:"user_id"`
+				Amount        float64   `db:"amount"`
+				PenaltyAmount float64   `db:"penalty_amount"` // <- EXTRAEMOS LA MORA DIRECTAMENTE
+				Status        string    `db:"status"`
+				DueDate       time.Time `db:"due_date"`
 			}
-			getInstQuery := `SELECT user_id, amount, status, due_date FROM installments WHERE id = $1 FOR UPDATE`
+			getInstQuery := `SELECT user_id, amount, penalty_amount, status, due_date FROM installments WHERE id = $1 FOR UPDATE`
 			if err := tx.GetContext(ctx, &installment, getInstQuery, installmentID); err != nil {
 				return fmt.Errorf("cuota no encontrada: %w", err)
 			}
@@ -177,7 +176,7 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 				return fmt.Errorf("esta cuota ya fue pagada")
 			}
 
-			// --- NUEVO: Obtener datos del estudiante para el PDF y Correo ---
+			// --- Obtener datos del estudiante para el PDF y Correo ---
 			var user struct {
 				FullName string `db:"full_name"`
 				Email    string `db:"email"`
@@ -190,22 +189,12 @@ func PayInstallmentHandler(db *sqlx.DB) fiber.Handler {
 			studentName = user.FullName
 			studentEmail = user.Email
 
-			// --- CÁLCULO DE MORA MATEMÁTICO ---
-			totalToPay := installment.Amount
-			now := time.Now()
-			var penalty float64 = 0
+			// --- CÁLCULO DE PAGO ESTRICTO (BASADO EN BD) ---
+			// Delegamos la verdad absoluta a PostgreSQL.
+			penalty := installment.PenaltyAmount
+			totalToPay := installment.Amount + penalty
 
-			if now.After(installment.DueDate) {
-				duration := now.Sub(installment.DueDate)
-				daysDelay := int(math.Ceil(duration.Hours() / 24.0))
-
-				if daysDelay > 0 {
-					penalty = installment.Amount * (interestRate * float64(daysDelay))
-					totalToPay += penalty
-				}
-			}
-
-			// Actualizamos la variable global
+			// Actualizamos la variable global para el enviador de correos
 			finalAmountPaid = totalToPay
 
 			var wallet struct {
@@ -360,10 +349,10 @@ func GetMyInstallmentsHandler(db *sqlx.DB) fiber.Handler {
 		err := database.RunInTenantTx(db, tenantID, func(tx *sqlx.Tx) error {
 			// Consultamos las cuotas ordenadas por fecha de vencimiento
 			query := `
-				SELECT id, description, amount, status, due_date, created_at 
-				FROM installments 
-				WHERE user_id = $1 
-				ORDER BY due_date ASC`
+                SELECT id, description, amount, penalty_amount, status, due_date, created_at 
+                FROM installments 
+                WHERE user_id = $1 
+                ORDER BY due_date ASC`
 
 			installments = []InstallmentDTO{}
 			return tx.Select(&installments, query, userID)
