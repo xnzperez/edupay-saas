@@ -110,7 +110,14 @@ func CreatePreferenceHandler() fiber.Handler {
 		var mpResponse map[string]interface{}
 		json.Unmarshal(bodyBytes, &mpResponse)
 
-		initPoint, ok := mpResponse["sandbox_init_point"].(string)
+		// 1. Selección dinámica del entorno (Producción vs Sandbox)
+		urlKey := "sandbox_init_point" // Por defecto, entorno local/pruebas
+		if os.Getenv("APP_ENV") == "production" {
+			urlKey = "init_point" // Entorno real para tokens APP_USR-
+		}
+
+		// 2. Extraer la URL correcta
+		initPoint, ok := mpResponse[urlKey].(string)
 		if !ok {
 			fmt.Println("❌ Error de MP (Respuesta):", string(bodyBytes))
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Mercado Pago rechazó la configuración"})
